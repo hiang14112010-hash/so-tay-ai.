@@ -38,10 +38,10 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *:before,html[data-mot
 @media(max-width:650px){.journey-book{grid-template-columns:1fr;perspective:1400px}.journey-book:before{left:0;width:10px}.journey-book>.book-page{min-height:0}.journey-book>.left{min-height:190px}.book-turning{overflow:hidden}.mobile-sheet{width:100%;left:0;transform-origin:left center}.mobile-sheet .turn-face{display:flex;flex-direction:column;border-radius:8px}.mobile-sheet .turn-face>.book-page{height:auto;min-height:0}.mobile-sheet .turn-face>.left{display:block;min-height:190px}.mobile-sheet .turn-face>.right{flex:1}.book-turn-sheet .chapter-number{float:right}}
 .mobile-sheet.turn-backward{transform-origin:right center}
 
-.orbit-scene .orb::before{animation:glass-current 9s ease-in-out infinite alternate}
-.orbit-satellite{animation:orbit-depth 24s var(--orbit-delay) steps(1,end) infinite}
+.orbit-scene .orb::before{animation:glass-current 12s ease-in-out infinite alternate}
+.orbit-satellite{animation:orbit-depth var(--orbit-period,24s) var(--orbit-delay) steps(1,end) infinite}
 .orbit-scene .orbit-satellite > :is(.floating-word,.orbit-chip){
-  animation:orbit-revolve 24s var(--orbit-delay) linear infinite;
+  animation:orbit-revolve var(--orbit-period,24s) var(--orbit-delay) linear infinite;
 }
 @keyframes glass-current{
   to{transform:rotate(35deg) scale(1.08);opacity:.48}

@@ -3,12 +3,12 @@ import {vocabulary,exercises} from './learning-data.mjs';
 const fresh=()=>({users:[],cards:[],reviews:[],awards:[],attempts:[],conversations:[]});
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const field=(v,min,max,label)=>{if(typeof v!=='string'||v.trim().length<min||v.trim().length>max)throw fail(`${label} cần từ ${min} đến ${max} ký tự.`);return v.trim();};
-const publicUser=({id,username,name,intro,guide,goal,publicRank})=>({id,username,name,intro,guide,goal,publicRank});
+const publicUser=({id,username,name,intro,guide,goal,publicRank,socialProvider})=>({id,username,name,intro,guide,goal,publicRank,...(socialProvider?{socialProvider}:{})});
 const shuffle=list=>[...list].sort(()=>Math.random()-.5);
 const hex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
 
 // Same UI contract as the Node API, with browser-local storage only.
-export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=()=>Date.now(),lock=fn=>fn()}){
+export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=()=>Date.now(),lock=fn=>fn(),socialIdentity=()=>null}){
   const day=(offset=0)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now()+offset*86400000));
   const passwordHash=async(password,salt)=>{const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);return hex(new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',salt:new TextEncoder().encode(salt),iterations:210000,hash:'SHA-256'},key,256)));};
   function deck(state,uid){return [...vocabulary,...state.cards.filter(c=>c.userId===uid)].map(w=>{const r=state.reviews.find(r=>r.userId===uid&&r.wordId===w.id);return {...w,seen:!!r,level:r?.level||0,due:r?.due||day(),isDue:!!r&&r.due<=day()};});}
@@ -22,11 +22,25 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
     const verb=method||(data?'POST':'GET');let user=state.users.find(u=>u.id===session.get());
     let result,dirty=false;
     if(route==='session')return {user:user?publicUser(user):null,aiConfigured:false,local:true};
+    if(route==='social-login'&&verb==='POST'){
+      const identity=socialIdentity();
+      if(!identity)throw fail('Cần xác thực bằng Google hoặc Facebook trước.',401);
+      let found=state.users.find(profile=>profile.socialKey===identity.key);
+      if(!found){
+        const displayName=(identity.name||'').trim().slice(0,32);
+        found={id:crypto.randomUUID(),username:'',name:displayName.length>=2?displayName:'Học viên',socialKey:identity.key,
+          socialProvider:identity.provider,intro:false,guide:0,goal:10,publicRank:false,created:now()};
+        state.users.push(found);
+        await write(state);
+      }
+      session.set(found.id);
+      return {user:publicUser(found)};
+    }
     if((route==='register'||route==='login')&&verb==='POST'){
       const username=field(b.username,3,30,'Tên đăng nhập').toLowerCase();
       if(!/^[a-z0-9_.-]+$/.test(username))throw fail('Tên đăng nhập chỉ gồm chữ không dấu, số, dấu chấm, gạch dưới hoặc gạch ngang.');
       if(typeof b.password!=='string'||b.password.length<8||b.password.length>128)throw fail('Mật khẩu cần từ 8 đến 128 ký tự.');
-      let found=state.users.find(u=>u.username===username);
+      let found=state.users.find(u=>!u.socialKey&&u.username===username);
       if(route==='register'){
         if(found)throw fail('Tên đăng nhập này đã tồn tại trên trình duyệt này.');
         const name=field(b.name,2,32,'Tên hiển thị'),salt=hex(crypto.getRandomValues(new Uint8Array(16)));
@@ -113,10 +127,10 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
   return {request(path,data,method){const task=queue.then(()=>lock(()=>execute(path,data,method)));queue=task.catch(()=>{});return task;}};
 }
 
-export function browserLocalAPI(){
+export function browserLocalAPI(socialIdentity){
   const prefix='so-tay-ai-pages:'+new URL('.',import.meta.url).pathname;
   let connection;
   function database(){return connection??=new Promise((resolve,reject)=>{const r=indexedDB.open(prefix,1);r.onupgradeneeded=()=>r.result.createObjectStore('storage');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(fail('Không mở được dữ liệu trình duyệt. Hãy cho phép lưu dữ liệu website.'));});}
   async function transaction(mode,value){const db=await database();return new Promise((resolve,reject)=>{const t=db.transaction('storage',mode),store=t.objectStore('storage'),r=mode==='readonly'?store.get('state'):store.put(value,'state');t.oncomplete=()=>resolve(r.result);t.onabort=t.onerror=()=>reject(fail('Không lưu được dữ liệu. Hãy kiểm tra dung lượng trình duyệt.'));});}
-  return createLocalAPI({read:()=>transaction('readonly'),write:s=>transaction('readwrite',s),session:{get:()=>sessionStorage.getItem(prefix),set:id=>sessionStorage.setItem(prefix,id),clear:()=>sessionStorage.removeItem(prefix)},lock:fn=>navigator.locks?navigator.locks.request(prefix,fn):fn()});
+  return createLocalAPI({socialIdentity,read:()=>transaction('readonly'),write:s=>transaction('readwrite',s),session:{get:()=>sessionStorage.getItem(prefix),set:id=>sessionStorage.setItem(prefix,id),clear:()=>sessionStorage.removeItem(prefix)},lock:fn=>navigator.locks?navigator.locks.request(prefix,fn):fn()});
 }

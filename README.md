@@ -25,3 +25,11 @@ Worker `may-ai` dùng `may-ai-cloud-worker.mjs` cùng mô-đun `may-ai-prompt.mj
 ## Font
 
 Các font đi kèm có giấy phép trong OFL.txt.
+
+## Đăng nhập Google và Facebook
+
+Hồ sơ Google và Facebook được xác thực bằng Firebase Authentication. Flashcard, bài tập và lịch sử chat vẫn lưu theo hồ sơ trong trình duyệt; thêm phương thức đăng nhập không đồng bộ dữ liệu giữa thiết bị.
+
+1. Tạo dự án Firebase, thêm một Web App rồi bật **Authentication**. Thêm `hiang14112010-hash.github.io` vào **Authentication → Settings → Authorized domains**.
+2. Bật **Google** trong **Sign-in method**. Để bật **Facebook**, tạo App trong Meta for Developers, nhập App ID và App Secret vào Firebase Authentication, rồi thêm URL callback mà Firebase cung cấp vào phần **Valid OAuth Redirect URIs** trong Meta. Đưa app Meta về trạng thái cho phép người dùng công khai đăng nhập.
+3. Điền cấu hình Web App công khai vào `social-auth-config.mjs`. Đặt `enabledProviders` thành `['google', 'facebook']` với các phương thức đã bật thật. App Secret của Facebook chỉ nhập trong Firebase Console.

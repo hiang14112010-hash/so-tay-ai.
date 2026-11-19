@@ -9,6 +9,16 @@
   let grading=false,flipping=false,guideBusy=false;
   let user=null,aiConfigured=false,currentRoute='home',routeVersion=0,screen='boot',introStep=0,introChoice='',guideStep=-1,guideReplay=false,words=[],flashIndex=0,flipped=false,deckFilter='all',search='',attempt=null,selectedAnswer=null,answerResult=null,rankPeriod='week',chat=[],chatDraft='',toastTimer,translationController;
   const localTutor=window.studyAI;
+  const socialAuth=window.studySocial;
+  const socialLabels={google:'Google',facebook:'Facebook'};
+  let authBusy=false;
+  const compactChat=matchMedia('(max-width:820px)');
+  const mobileNavigation=matchMedia('(max-width:650px)');
+  const secondaryRoutes=['tools','translate','leaderboard'];
+  const mobileItems=[
+    ['home','Trang chủ','home'],['flashcards','Flashcard','cards'],
+    ['exercises','Luyện tập','exercise'],['ai','Agen AI','spark']
+  ];
   let chatThreads=[],chatSelection,chatJob=null,deletingChat=false;
   const canChat=()=>!chatJob&&!deletingChat&&(localTutor?localTutor.ready&&!localTutor.busy:aiConfigured);
   function resetChat(){
@@ -19,11 +29,14 @@
   function toast(message){clearTimeout(toastTimer);$('toast').textContent=message;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4000);}
   function showScreen(id){screen=id;for(const key of ['boot','auth-screen','intro-screen','guide-screen','app-shell'])$(key).hidden=key!==id;window.scrollTo(0,0);}
   function focusTitle(container){const title=container.querySelector('h1,h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});}}
-  function heading(title,subtitle,extra=''){return `<div class="page-heading"><div><p class="eyebrow">KHÔNG GIAN CỦA BẠN</p><h1>${title}</h1><p>${subtitle}</p></div>${extra}</div>`;}
+  function heading(title,subtitle,extra=''){return `<div class="page-heading"><div><h1>${title}</h1><p>${subtitle}</p></div>${extra}</div>`;}
   function empty(title,description,route,label){return `<div class="card empty-state">${icon('book')}<h2>${title}</h2><p>${description}</p>${route?`<a class="button primary" href="#${route}">${label} ${icon('arrow')}</a>`:''}</div>`;}
   function showAuth(register=false){
     showScreen('auth-screen');
     const local=!!window.studyLocal;
+    const socialControls=socialAuth?`<div class="auth-social">${socialAuth.providers.map(provider=>
+      `<button class="button full" data-social-provider="${provider}" type="button" disabled>Tiếp tục với ${socialLabels[provider]}</button>`).join('')}
+      <p id="social-status" class="form-status" role="status"></p></div>`:'';
     const storageSummary=local?'Hồ sơ lưu trên trình duyệt này':'Tiến độ được lưu theo tài khoản';
     const storageDetail=local?'Hồ sơ, flashcard và tiến độ chỉ nằm trong trình duyệt này, không tự đồng bộ sang thiết bị khác. Xóa dữ liệu website sẽ xóa hồ sơ. Mật khẩu hồ sơ không thay thế bảo mật tài khoản trực tuyến.':'Hồ sơ, flashcard và lịch ôn được lưu trên máy chủ website để bạn tiếp tục học khi đăng nhập lại.';
     $('auth-screen').innerHTML=`<div class="auth-layout">
@@ -32,7 +45,7 @@
         <div class="auth-art-copy">
           <p class="eyebrow auth-kicker"><span class="status-dot"></span>MỖI NGÀY, MỘT CHÚT TIẾN BỘ</p>
           <h1>Học cùng AI.<br><em>Nhớ dài lâu.</em></h1>
-          <p class="auth-description">Một không gian nhỏ để hỏi rõ hơn,<br>hiểu sâu hơn và tự tin dùng từ mới.</p>
+          <p class="auth-description">Một không gian nhỏ để hỏi rõ hơn,<br> hiểu sâu hơn và tự tin dùng từ mới.</p>
           <div class="sculpture orbit-scene" aria-hidden="true"><div class="orb"></div><div class="orbit-satellite"><div class="floating-word"><span class="word-card-label">TỪ MỚI, CƠ HỘI MỚI</span><strong>grow <span>↗</span></strong><small>/ɡrəʊ/ · tiến bộ, trưởng thành</small></div></div><div class="orbit-satellite second"><div class="floating-word second"><span class="word-card-spark">✧</span><div><strong>A little, every day.</strong><small>Một chút hôm nay. Khác biệt ngày mai.</small></div></div></div><span class="tiny-spark">✳</span></div>
         </div>
         <div class="auth-learning-path"><span><i>01</i>Hỏi rõ</span><b>·</b><span><i>02</i>Tự luyện</span><b>·</b><span><i>03</i>Nhớ lâu</span></div>
@@ -51,10 +64,19 @@
           <p class="form-status" id="auth-status" role="status"></p>
           <button class="button primary full auth-submit" type="submit"><span>${register?'Tạo tài khoản của tôi':'Vào không gian học'}</span>${icon('arrow')}</button>
         </form>
+        ${socialControls}
         <p class="auth-note">Không cần email. Chỉ cần một chút tò mò.</p>
         <details class="auth-storage"><summary>${icon('shield')}<span>${storageSummary}</span><span class="storage-plus" aria-hidden="true">＋</span></summary><p>${storageDetail} ${local?'Bảng xếp hạng chỉ gồm các hồ sơ trên cùng trình duyệt.':'Bạn tự chọn có hiển thị trên bảng xếp hạng hay không.'}</p><p>Hãy ghi nhớ tên đăng nhập và mật khẩu của bạn.</p></details>
       </div><p class="auth-panel-footer">HỌC CHỦ ĐỘNG <span>✦</span> TIẾN BỘ MỖI NGÀY</p></div>
     </div>`;
+    if(socialAuth){
+      const panel=$('auth-screen').querySelector('.auth-social');
+      socialAuth.prepare().then(()=>{
+        if(panel.isConnected)panel.querySelectorAll('button').forEach(button=>button.disabled=false);
+      }).catch(()=>{
+        if(panel.isConnected)panel.querySelector('[role="status"]').textContent='Chưa tải được đăng nhập Google/Facebook.';
+      });
+    }
   }
   const introSlides=[
     {eyebrow:'01 / NHÌN LẠI CÁCH MÌNH HỌC',title:'Bạn đang dùng AI.<br>Nhưng đã <em>thực sự học?</em>',text:'Một câu trả lời đến rất nhanh. Nhưng kiến thức chỉ ở lại khi bạn hiểu và tự mình sử dụng nó.',chips:['Có đáp án ≠ đã hiểu','Tư duy vẫn là của bạn']},
@@ -115,7 +137,21 @@
   }
   function enter(){if(!user)return showAuth();if(!user.intro){introStep=0;return showIntro();}if(user.guide<4){guideReplay=false;guideStep=user.guide===0?-1:user.guide;return showGuide();}showScreen('app-shell');$('profile-button').textContent=user.name.slice(0,2).toUpperCase();renderRoute();}
   function navigate(route){if(location.hash==='#'+route)renderRoute();else location.hash=route;}
-  async function renderRoute(){if(!user||screen!=='app-shell')return;const version=++routeVersion;translationController?.abort();currentRoute=location.hash.slice(1)||'home';if(![...nav.map(x=>x[0]),'account'].includes(currentRoute))currentRoute='home';$('route-label').textContent=nav.find(x=>x[0]===currentRoute)?.[1]||'Tài khoản';document.title=$('route-label').textContent+' · Sổ tay AI';$('main-nav').innerHTML=nav.map(([id,label,i])=>`${id==='leaderboard'?'<div class="nav-separator"></div>':''}<a href="#${id}" class="nav-item ${currentRoute===id?'active':''}" ${currentRoute===id?'aria-current="page"':''} aria-label="${label}">${icon(i)}<span>${label}</span>${id==='ai'?'<span class="nav-mini">RIÊNG</span>':''}</a>`).join('');$('main-content').innerHTML='<div class="loading" role="status">Đang mở trang…</div>';
+  function renderNavigation(){
+    const item=(route,label,type,active)=>`<a href="#${route}" class="nav-item ${active?'active':''}" ${active?'aria-current="page"':''} aria-label="${label}">${icon(type)}<span>${label}</span></a>`;
+    $('main-nav').innerHTML=nav.map(([route,label,type])=>item(route,label,type,currentRoute===route)).join('');
+    const moreActive=secondaryRoutes.includes(currentRoute);
+    $('mobile-nav').innerHTML=mobileItems.map(([route,label,type])=>item(route,label,type,currentRoute===route||(route==='exercises'&&currentRoute==='review'))).join('')+
+      `<button type="button" class="nav-item ${moreActive?'active':''}" data-action="open-more" aria-haspopup="dialog" aria-controls="mobile-more"><span class="more-dots" aria-hidden="true">···</span><span>Thêm</span></button>`;
+    $('mobile-more-links').innerHTML=nav.filter(([route])=>secondaryRoutes.includes(route)).map(([route,label,type])=>item(route,label,type,currentRoute===route)).join('');
+  }
+  function practiceNavigation(){
+    return `<nav class="practice-nav segmented" aria-label="Chế độ luyện tập">
+      <a href="#exercises" ${currentRoute==='exercises'?'aria-current="page"':''}>Bài tập</a>
+      <a href="#review" ${currentRoute==='review'?'aria-current="page"':''}>Ôn tập</a>
+    </nav>`;
+  }
+  async function renderRoute(){if(!user||screen!=='app-shell')return;const version=++routeVersion;translationController?.abort();currentRoute=location.hash.slice(1)||'home';if(![...nav.map(x=>x[0]),'account'].includes(currentRoute))currentRoute='home';$('route-label').textContent=nav.find(x=>x[0]===currentRoute)?.[1]||'Tài khoản';document.title=$('route-label').textContent+' · Sổ tay AI';renderNavigation();$('main-content').innerHTML='<div class="loading" role="status">Đang mở trang…</div>';
     try{let html='';if(currentRoute==='home'){const [stats,data]=await Promise.all([api('dashboard'),api('words')]);words=data.words;html=home(stats);}else if(currentRoute==='tools')html=toolsPage();else if(currentRoute==='exercises')html=exercisePage();else if(currentRoute==='flashcards'||currentRoute==='review'){words=(await api('words')).words;html=currentRoute==='flashcards'?flashPage():reviewPage();}else if(currentRoute==='translate')html=translationPage();else if(currentRoute==='leaderboard')html=rankPage(await api('leaderboard?period='+rankPeriod));else if(currentRoute==='ai'){
       if(localTutor){
         const {conversations}=await api('conversations');
@@ -127,7 +163,7 @@
         }
       }
       html=aiPage();
-    }else html=accountPage();if(version!==routeVersion||screen!=='app-shell')return;$('main-content').innerHTML=html;$('main-content').classList.remove('route-enter');void $('main-content').offsetWidth;$('main-content').classList.add('route-enter');if(currentRoute==='tools')updatePrompt();if(currentRoute==='flashcards')renderFlash();if(currentRoute==='ai'){
+    }else html=accountPage();if(version!==routeVersion||screen!=='app-shell')return;$('main-content').innerHTML=html;$('main-content').classList.remove('route-enter');void $('main-content').offsetWidth;$('main-content').classList.add('route-enter');if(currentRoute==='tools')updatePrompt();if(currentRoute==='flashcards'){restoreStudyCard();renderFlash();}if(currentRoute==='ai'){
       $('chat-input').value=chatDraft;
       chatDraft='';
       syncTutor();
@@ -135,15 +171,26 @@
       renderChatHistory();
     }restoreQuizState();window.scrollTo(0,0);$('main-content').focus({preventScroll:true});}catch(e){if(version===routeVersion&&screen==='app-shell')$('main-content').innerHTML=`<div class="error-card" role="alert">${esc(e.message)} <button class="button small" data-action="retry">Thử lại</button></div>`;}
   }
-  function home(s){const date=new Date().toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',weekday:'long',day:'numeric',month:'long'});const w=words[(Math.floor(Date.now()/86400000))%40];const stat=(n,label,i)=>`<div class="stat"><span class="stat-icon">${icon(i)}</span><div><strong>${n}</strong><small>${label}</small></div></div>`;return heading(`Chào ${esc(user.name)} <span class="greeting-mark">✳</span>`,'Một ngày mới, một cơ hội để tiến bộ. Hôm nay mình học gì nhỉ?',`<span class="heading-date">${date}</span>`)+`<div class="dashboard-grid"><section class="card hero"><p class="eyebrow">HỌC CÓ CHỦ ĐÍCH · NHỚ CÓ PHƯƠNG PHÁP</p><h2>Mỗi từ mới,<br>mở thêm một thế giới.</h2><p>Bắt đầu từ một bộ thẻ nhỏ. Hiểu thật rõ, luyện thật đều, để kiến thức ở lại lâu hơn.</p><a class="button lime" href="#${s.due?'review':'flashcards'}">${s.due?'Ôn '+s.due+' từ đến hạn':'Bắt đầu học hôm nay'} ${icon('arrow')}</a><div class="hero-art" aria-hidden="true"><img class="hero-book" src="book.png" alt=""><span class="hero-spark">✧</span></div></section><section class="card daily-word"><p class="eyebrow">MỘT TỪ HAY CHO HÔM NAY</p><div class="word-heading"><h2 lang="en">${esc(w.word)}</h2><button class="icon-button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm ${esc(w.word)}">${icon('volume')}</button></div><span class="word-pos">${esc(w.pos)}</span><p class="meaning">${esc(w.meaning)}</p><p class="sentence" lang="en">“${esc(w.example)}”</p><button class="text-link" data-open-word="${w.id}">Khám phá trong Flashcard ↗</button></section></div><div class="stats-row">${stat(s.learned,'TỪ ĐÃ HỌC','book')}${stat(s.streak,'NGÀY LIÊN TIẾP','fire')}${stat(s.xp,'ĐIỂM KINH NGHIỆM','spark')}${stat(s.due,'TỪ ĐẾN LỊCH ÔN','review')}</div><div class="dashboard-grid"><section><div class="section-heading"><h2>Góc công cụ của bạn</h2><a class="text-link" href="#tools">Khám phá công cụ ↗</a></div><div class="tool-grid">${toolCard('tools','spark','Ghép prompt','Biến ý tưởng thành câu hỏi rõ ràng, hiệu quả.')}${toolCard('flashcards','cards','Flashcard','Lật thẻ, tự nhớ và lưu từ của riêng bạn.')}${toolCard('translate','translate','Dịch thuật','Hiểu từ và câu trong đúng ngữ cảnh.')}</div><div class="next-session">${icon('exercise')}<div><strong>Một chút thử thách, thêm chút tự tin.</strong><p>8 câu hỏi · Từ vựng & kỹ năng dùng AI</p></div><a class="button small" href="#exercises">Làm bài tập →</a></div></section><section class="card progress-card"><div class="section-heading"><h2>Nhịp học của bạn</h2><span class="pill green">7 ngày qua</span></div><p>Đều đặn một chút, mỗi ngày.</p><div class="goal-line"><span>Mục tiêu hôm nay</span><strong>${Math.min(s.today,user.goal)} / ${user.goal} câu đúng</strong></div><progress value="${Math.min(s.today,user.goal)}" max="${user.goal}" aria-label="Mục tiêu câu đúng hôm nay"></progress><div class="week-bars" aria-label="Điểm trong 7 ngày qua">${s.week.map(d=>`<div class="day-bar" title="${d.day}: ${d.xp} XP"><i style="height:${Math.max(6,Math.round(d.xp/Math.max(10,...s.week.map(x=>x.xp))*62))}px"></i>${new Date(d.day+'T12:00:00+07:00').toLocaleDateString('vi-VN',{weekday:'short'}).replace('Th ','T')}</div>`).join('')}</div><div class="daily-tip">${icon('spark')}Mỗi câu đúng mới là một bước tiến.</div></section></div>`;}
+  function home(s){const lastCard=getStudyCard();const resume=words.some(word=>word.id===lastCard);const date=new Date().toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',weekday:'long',day:'numeric',month:'long'});const w=words[(Math.floor(Date.now()/86400000))%40];const stat=(n,label,i)=>`<div class="stat"><span class="stat-icon">${icon(i)}</span><div><strong>${n}</strong><small>${label}</small></div></div>`;return heading(`Chào ${esc(user.name)} <span class="greeting-mark">✳</span>`,'Một ngày mới, một cơ hội để tiến bộ. Hôm nay mình học gì nhỉ?',`<span class="heading-date">${date}</span>`)+`<div class="dashboard-grid"><section class="card hero"><div class="hero-copy"><p class="eyebrow">HỌC TIẾP</p><h2>${s.due?'Ôn '+s.due+' từ đến hạn':resume?'Tiếp tục bộ thẻ':'Từ đầu tiên của bạn'}</h2><p>${s.due?'Ôn những từ đã học bằng một lượt trắc nghiệm ngắn.':resume?'Mở lại bộ Flashcard từ thẻ bạn xem gần nhất.':'Lật một flashcard, thử nhớ nghĩa rồi xem ví dụ.'}</p><a class="button lime" href="#${s.due?'review':'flashcards'}">${s.due?'Bắt đầu ôn':resume?'Tiếp tục học':'Mở Flashcard'} ${icon('arrow')}</a></div><div class="hero-art" aria-hidden="true"><img class="hero-book" src="book.png" alt=""><span class="hero-spark">✧</span></div></section><section class="card daily-word"><p class="eyebrow">MỘT TỪ HAY CHO HÔM NAY</p><div class="word-heading"><h2 lang="en">${esc(w.word)}</h2><button class="icon-button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm ${esc(w.word)}">${icon('volume')}</button></div><span class="word-pos">${esc(w.pos)}</span><p class="meaning">${esc(w.meaning)}</p><p class="sentence" lang="en">“${esc(w.example)}”</p><button class="text-link" data-open-word="${w.id}">Khám phá trong Flashcard ↗</button></section></div><div class="stats-row">${stat(s.learned,'TỪ ĐÃ HỌC','book')}${stat(s.streak,'NGÀY LIÊN TIẾP','fire')}${stat(s.xp,'ĐIỂM KINH NGHIỆM','spark')}${stat(s.due,'TỪ ĐẾN LỊCH ÔN','review')}</div><div class="dashboard-grid"><section><div class="section-heading"><h2>Góc công cụ của bạn</h2><a class="text-link" href="#tools">Khám phá công cụ ↗</a></div><div class="tool-grid">${toolCard('tools','spark','Ghép prompt','Biến ý tưởng thành câu hỏi rõ ràng, hiệu quả.')}${toolCard('flashcards','cards','Flashcard','Lật thẻ, tự nhớ và lưu từ của riêng bạn.')}${toolCard('translate','translate','Dịch thuật','Hiểu từ và câu trong đúng ngữ cảnh.')}</div><div class="next-session">${icon('exercise')}<div><strong>Một chút thử thách, thêm chút tự tin.</strong><p>8 câu hỏi · Từ vựng & kỹ năng dùng AI</p></div><a class="button small" href="#exercises">Làm bài tập →</a></div></section><section class="card progress-card"><div class="section-heading"><h2>Nhịp học của bạn</h2><span class="pill green">7 ngày qua</span></div><p>Đều đặn một chút, mỗi ngày.</p><div class="goal-line"><span>Mục tiêu hôm nay</span><strong>${Math.min(s.today,user.goal)} / ${user.goal} câu đúng</strong></div><progress value="${Math.min(s.today,user.goal)}" max="${user.goal}" aria-label="Mục tiêu câu đúng hôm nay"></progress><div class="week-bars" aria-label="Điểm trong 7 ngày qua">${s.week.map(d=>`<div class="day-bar" title="${d.day}: ${d.xp} XP"><i style="height:${Math.max(6,Math.round(d.xp/Math.max(10,...s.week.map(x=>x.xp))*62))}px"></i>${new Date(d.day+'T12:00:00+07:00').toLocaleDateString('vi-VN',{weekday:'short'}).replace('Th ','T')}</div>`).join('')}</div><div class="daily-tip">${icon('spark')}Mỗi câu đúng mới là một bước tiến.</div></section></div>`;}
   function toolCard(route,i,title,text){return `<a class="tool-card" href="#${route}"><span class="tool-icon">${icon(i)}</span><span class="tool-arrow">${icon('diagonal')}</span><h3>${title}</h3><p>${text}</p></a>`;}
   function toolsPage(){return heading('Hỏi AI, rõ ràng hơn.','Ghép một prompt có mục tiêu. Giữ quyền chủ động trong cách bạn học.')+`<div class="template-row" aria-label="Mẫu prompt"><button class="template-chip" data-template="learn">✧ Học một từ mới</button><button class="template-chip" data-template="quiz">✎ Tạo bài luyện tập</button><button class="template-chip" data-template="check">✓ Kiểm tra câu đã viết</button></div><div class="two-columns"><form id="prompt-form" class="card"><div class="section-heading"><h2>Công thức prompt của bạn</h2><span class="pill green">5 thành phần</span></div><div class="form-grid"><label class="full-width">01 · Mục tiêu học tập<input name="goal" maxlength="180" required value="${esc(promptDraft.goal)}"></label><label>02 · Từ cần học<input name="word" maxlength="80" required value="${esc(promptDraft.word)}"></label><label>03 · Trình độ<select name="level">${['Lớp 11 · A2–B1','Cơ bản · A1–A2','Nâng cao · B1–B2'].map(x=>`<option ${promptDraft.level===x?'selected':''}>${x}</option>`).join('')}</select></label><label class="full-width">Ngữ cảnh hoặc câu bạn muốn kiểm tra<textarea name="context" rows="3" maxlength="500" required>${esc(promptDraft.context)}</textarea></label><label class="full-width">04 · Yêu cầu cụ thể<textarea name="request" rows="3" maxlength="600" required>${esc(promptDraft.request)}</textarea></label><label class="full-width">05 · Cách trình bày<select name="format">${['Theo từng mục ngắn','Bảng dễ so sánh','Từng bước, có ví dụ'].map(x=>`<option ${promptDraft.format===x?'selected':''}>${x}</option>`).join('')}</select></label></div></form><section class="card prompt-preview"><span class="mini-label">${icon('spark')} PROMPT ĐƯỢC GHÉP TRỰC TIẾP</span><div id="prompt-output" class="prompt-output"></div><div class="row wrap" style="margin-top:18px"><button class="button primary" data-action="copy-prompt">${icon('copy')} Sao chép prompt</button><button class="button" data-action="prompt-to-ai">Dùng với Agen AI ↗</button></div><ul class="tips-list"><li>${icon('check')}Có câu gốc giúp AI hiểu đúng nghĩa.</li><li>${icon('check')}Tự trả lời trước khi xem lời giải.</li><li>${icon('check')}Đối chiếu thông tin quan trọng với từ điển.</li></ul></section></div>`;}
   function updatePrompt(){const form=$('prompt-form');if(!form)return;promptDraft=Object.fromEntries(new FormData(form));$('prompt-output').textContent=`Bạn là gia sư tiếng Anh. Trình độ của tôi: ${promptDraft.level}.\n\nMục tiêu: ${promptDraft.goal}.\nTừ cần học: ${promptDraft.word}.\nNgữ cảnh: ${promptDraft.context}\n\n${promptDraft.request}\n\nTrình bày: ${promptDraft.format}. Nếu chưa chắc, hãy nói rõ; không tự bịa thông tin. Hướng dẫn tôi tự suy nghĩ thay vì làm hộ.`;}
-  function exercisePage(){if(attempt?.kind==='exercise')return quizPage();return heading('Tự thử sức. Hiểu sâu hơn.','Bài tập riêng biệt, có lời giải ngay sau mỗi câu trả lời.')+`<section class="feature-banner"><div><p class="eyebrow">BÀI LUYỆN TỔNG HỢP</p><h2>Từ vựng & kỹ năng học với AI</h2><p>8 câu hỏi ngẫu nhiên về nghĩa, điền từ và cách dùng AI. Mỗi đáp án là một cơ hội để hiểu thêm.</p></div><button class="button primary" data-start-quiz="exercise">Bắt đầu luyện tập ${icon('arrow')}</button></section><div class="exercise-features">${[['01','Hiểu đúng nghĩa','Nhận ra nghĩa phù hợp của từ trong từng ngữ cảnh.'],['02','Dùng từ trong câu','Chọn từ còn thiếu, phân biệt từ loại và cụm từ.'],['03','Học AI chủ động','Luyện viết prompt, kiểm chứng thông tin và tự học.']].map(([n,t,p])=>`<div class="card"><span class="big-number">${n}</span><h3>${t}</h3><p>${p}</p></div>`).join('')}</div><p class="privacy-note">+10 XP cho mỗi câu trả lời đúng lần đầu trong ngày. Làm lại giúp củng cố kiến thức và không cộng điểm trùng.</p>`;}
+  function exercisePage(){if(attempt?.kind==='exercise')return quizPage();return heading('Luyện tập','Bài tập có lời giải ngay sau mỗi câu trả lời.')+practiceNavigation()+`<section class="feature-banner"><div><p class="eyebrow">BÀI LUYỆN TỔNG HỢP</p><h2>Từ vựng & kỹ năng học với AI</h2><p>8 câu hỏi ngẫu nhiên về nghĩa, điền từ và cách dùng AI. Mỗi đáp án là một cơ hội để hiểu thêm.</p></div><button class="button primary" data-start-quiz="exercise">Bắt đầu luyện tập ${icon('arrow')}</button></section><div class="exercise-features">${[['01','Hiểu đúng nghĩa','Nhận ra nghĩa phù hợp của từ trong từng ngữ cảnh.'],['02','Dùng từ trong câu','Chọn từ còn thiếu, phân biệt từ loại và cụm từ.'],['03','Học AI chủ động','Luyện viết prompt, kiểm chứng thông tin và tự học.']].map(([n,t,p])=>`<div class="card"><span class="big-number">${n}</span><h3>${t}</h3><p>${p}</p></div>`).join('')}</div><p class="privacy-note">+10 XP cho mỗi câu trả lời đúng lần đầu trong ngày. Làm lại giúp củng cố kiến thức và không cộng điểm trùng.</p>`;}
+  let openStudyCard=null;
+  function studyCardKey(){return 'so-tay-ai-study-card:'+location.pathname+':'+user.id;}
+  function getStudyCard(){try{return localStorage.getItem(studyCardKey());}catch{return null;}}
+  function restoreStudyCard(){
+    const id=openStudyCard||getStudyCard();
+    openStudyCard=null;
+    const index=filteredWords().findIndex(word=>word.id===id);
+    if(index>=0)flashIndex=index;
+  }
   function filteredWords(){return words.filter(w=>(deckFilter==='all'||(deckFilter==='custom'?w.custom:w.seen))&&(`${w.word} ${w.meaning}`.toLowerCase().includes(search.toLowerCase())));}
   function flashPage(){return heading('Mỗi thẻ, một điều mới.','Thử nhớ trước, lật thẻ sau. Từ của bạn được lưu riêng theo tài khoản.',`<button class="button primary" data-action="add-card">＋ Thêm từ mới</button>`)+`<div class="deck-toolbar"><div class="segmented" aria-label="Chọn bộ thẻ">${[['all','Tất cả'],['seen','Đã học'],['custom','Của tôi']].map(([id,t])=>`<button data-filter="${id}" aria-pressed="${deckFilter===id}">${t}</button>`).join('')}</div><input id="word-search" type="search" value="${esc(search)}" placeholder="Tìm từ hoặc nghĩa…" aria-label="Tìm trong bộ thẻ"></div><div id="flash-content"></div>`;}
-  function renderFlash(){const list=filteredWords();flashIndex=Math.min(flashIndex,Math.max(0,list.length-1));const w=list[flashIndex];if(!w){$('flash-content').innerHTML=empty('Chưa có từ phù hợp.','Thử đổi bộ lọc, tìm từ khác hoặc thêm một từ mới.');return;}$('flash-content').innerHTML=`<div class="flash-layout"><section><button class="flashcard ${flipped?'flipped':''}" data-action="flip" aria-label="${flipped?'Mặt nghĩa. Bấm để xem từ':'Lật thẻ để xem nghĩa'}"><span class="eyebrow">${flipped?'NGHĨA & NGỮ CẢNH':'BẠN CÓ NHỚ TỪ NÀY?'}</span><strong ${flipped?'':'lang="en"'}>${esc(flipped?w.meaning:w.word)}</strong><p>${esc(flipped?w.example:w.pos)}</p><span class="flip-hint">${icon('cards')} Bấm vào thẻ để lật</span></button><div class="flashcard-actions"><button class="button" data-action="remember-no" ${!flipped?'disabled':''}>Ôn lại sớm</button><button class="button primary" data-action="remember-yes" ${!flipped?'disabled':''}>${icon('check')} Mình đã nhớ</button><button class="button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm">${icon('volume')}</button></div><div class="row between"><button class="button ghost" data-action="flash-prev" aria-label="Thẻ trước">←</button><span class="deck-counter">Thẻ ${flashIndex+1} / ${list.length} · ${w.seen?'Đã học':'Từ mới'}</span><button class="button ghost" data-action="flash-next" aria-label="Thẻ sau">→</button></div><p class="privacy-note">Tự đánh giá để lên lịch ôn. Điểm XP được tính khi làm bài trắc nghiệm.</p></section><section class="card"><div class="section-heading"><h2>Trong bộ thẻ này</h2><span class="pill">${list.length} từ</span></div><div class="word-list">${list.map((word,i)=>`<div class="word-row"><button data-flash-index="${i}" style="text-align:left;flex:1"><strong lang="en">${esc(word.word)}</strong><small>${esc(word.meaning)}</small></button><span class="word-state">${word.isDue?'Đến hạn':word.seen?'✓ Đã học':'Mới'}</span>${word.custom?`<button data-delete-word="${word.id}" aria-label="Xóa từ ${esc(word.word)}">${icon('close')}</button>`:''}</div>`).join('')}</div></section></div>`;}
-  function reviewPage(){if(attempt?.kind==='review')return quizPage();const seen=words.filter(w=>w.seen),due=seen.filter(w=>w.isDue);return heading('Gặp lại để nhớ lâu.','Ôn bằng trắc nghiệm từ chính những flashcard bạn đã học.')+(seen.length?`<div class="review-summary"><div class="card"><strong>${seen.length}</strong><span>Từ đã học</span></div><div class="card"><strong>${due.length}</strong><span>Từ đến hạn hôm nay</span></div><div class="card"><strong>${seen.filter(w=>w.level>=3).length}</strong><span>Từ đã củng cố nhiều lần</span></div></div><section class="feature-banner"><div><p class="eyebrow">LƯỢT ÔN DÀNH RIÊNG CHO BẠN</p><h2>${due.length?'Đã đến lúc gặp lại '+due.length+' từ.':'Bạn đã theo kịp lịch ôn.'}</h2><p>${due.length?'Ưu tiên từ đến hạn. Tối đa 10 câu mỗi lượt, có lời giải và lịch ôn tiếp theo.':'Bạn vẫn có thể luyện lại các từ đã học để củng cố thêm.'}</p></div><button class="button primary" data-start-quiz="review">${due.length?'Bắt đầu ôn tập':'Luyện thêm một lượt'} ${icon('arrow')}</button></section><section class="card"><div class="section-heading"><h2>Sổ từ đã học</h2><span class="pill">Lịch ôn cá nhân</span></div><div class="word-list">${[...seen].sort((a,b)=>a.due.localeCompare(b.due)).map(w=>`<div class="word-row"><div><strong>${esc(w.word)}</strong><small>${esc(w.meaning)}</small></div><span class="word-state">${w.isDue?'Ôn hôm nay':new Date(w.due+'T12:00:00+07:00').toLocaleDateString('vi-VN')}</span></div>`).join('')}</div></section>`:empty('Bắt đầu với một flashcard.','Học và tự đánh giá ít nhất một từ. Sổ tay sẽ tạo bài ôn từ những từ đó, không trộn từ bạn chưa học.','flashcards','Mở Flashcard'));}
+  function renderFlash(){const list=filteredWords();flashIndex=Math.min(flashIndex,Math.max(0,list.length-1));const w=list[flashIndex];if(!w){$('flash-content').innerHTML=empty('Chưa có từ phù hợp.','Thử đổi bộ lọc, tìm từ khác hoặc thêm một từ mới.');return;}
+    try{localStorage.setItem(studyCardKey(),w.id);}catch{}
+    $('flash-content').innerHTML=`<div class="flash-layout"><section><button class="flashcard ${flipped?'flipped':''}" data-action="flip" aria-label="${flipped?'Mặt nghĩa. Bấm để xem từ':'Lật thẻ để xem nghĩa'}"><span class="eyebrow">${flipped?'NGHĨA & NGỮ CẢNH':'BẠN CÓ NHỚ TỪ NÀY?'}</span><strong ${flipped?'':'lang="en"'}>${esc(flipped?w.meaning:w.word)}</strong><p>${esc(flipped?w.example:w.pos)}</p></button><div class="flashcard-actions"><button id="flash-toggle" type="button" class="button ${flipped?'':'primary'}" data-action="flip">${icon('cards')} ${flipped?'Xem mặt từ':'Lật thẻ'}</button><button class="button" data-action="remember-no" ${!flipped?'disabled':''}>Ôn lại sớm</button><button class="button ${flipped?'primary':''}" data-action="remember-yes" ${!flipped?'disabled':''}>${icon('check')} Mình đã nhớ</button><button class="button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm">${icon('volume')}</button></div><div class="row between"><button class="button ghost" data-action="flash-prev" aria-label="Thẻ trước">←</button><span class="deck-counter">Thẻ ${flashIndex+1} / ${list.length} · ${w.seen?'Đã học':'Từ mới'}</span><button class="button ghost" data-action="flash-next" aria-label="Thẻ sau">→</button></div><p class="privacy-note">Tự đánh giá để lên lịch ôn. Điểm XP được tính khi làm bài trắc nghiệm.</p></section><section class="card"><div class="section-heading"><h2>Trong bộ thẻ này</h2><span class="pill">${list.length} từ</span></div><div class="word-list">${list.map((word,i)=>`<div class="word-row"><button data-flash-index="${i}" style="text-align:left;flex:1"><strong lang="en">${esc(word.word)}</strong><small>${esc(word.meaning)}</small></button><span class="word-state">${word.isDue?'Đến hạn':word.seen?'✓ Đã học':'Mới'}</span>${word.custom?`<button data-delete-word="${word.id}" aria-label="Xóa từ ${esc(word.word)}">${icon('close')}</button>`:''}</div>`).join('')}</div></section></div>`;}
+  function reviewPage(){if(attempt?.kind==='review')return quizPage();const seen=words.filter(w=>w.seen),due=seen.filter(w=>w.isDue);return heading('Ôn tập','Ôn bằng trắc nghiệm từ chính những flashcard bạn đã học.')+practiceNavigation()+(seen.length?`<div class="review-summary"><div class="card"><strong>${seen.length}</strong><span>Từ đã học</span></div><div class="card"><strong>${due.length}</strong><span>Từ đến hạn hôm nay</span></div><div class="card"><strong>${seen.filter(w=>w.level>=3).length}</strong><span>Từ đã củng cố nhiều lần</span></div></div><section class="feature-banner"><div><p class="eyebrow">LƯỢT ÔN DÀNH RIÊNG CHO BẠN</p><h2>${due.length?'Đã đến lúc gặp lại '+due.length+' từ.':'Bạn đã theo kịp lịch ôn.'}</h2><p>${due.length?'Ưu tiên từ đến hạn. Tối đa 10 câu mỗi lượt, có lời giải và lịch ôn tiếp theo.':'Bạn vẫn có thể luyện lại các từ đã học để củng cố thêm.'}</p></div><button class="button primary" data-start-quiz="review">${due.length?'Bắt đầu ôn tập':'Luyện thêm một lượt'} ${icon('arrow')}</button></section><section class="card"><div class="section-heading"><h2>Sổ từ đã học</h2><span class="pill">Lịch ôn cá nhân</span></div><div class="word-list">${[...seen].sort((a,b)=>a.due.localeCompare(b.due)).map(w=>`<div class="word-row"><div><strong>${esc(w.word)}</strong><small>${esc(w.meaning)}</small></div><span class="word-state">${w.isDue?'Ôn hôm nay':new Date(w.due+'T12:00:00+07:00').toLocaleDateString('vi-VN')}</span></div>`).join('')}</div></section>`:empty('Bắt đầu với một flashcard.','Học và tự đánh giá ít nhất một từ. Sổ tay sẽ tạo bài ôn từ những từ đó, không trộn từ bạn chưa học.','flashcards','Mở Flashcard'));}
   function quizPage(){const q=attempt.question;if(!q)return '';return heading(attempt.kind==='review'?'Nhớ lại, từng từ một.':'Tự thử sức, từng câu một.','Chọn đáp án bạn tin là đúng. Lời giải sẽ xuất hiện sau khi kiểm tra.')+`<div class="quiz-wrap"><div class="quiz-head"><span>Câu ${q.index} / ${q.total}</span><button class="text-link" data-action="quit-quiz">Kết thúc lượt này</button></div><progress max="${q.total}" value="${q.index-1}" aria-label="Tiến độ bài tập"></progress><div class="card quiz-card"><p class="eyebrow">${attempt.kind==='review'?'ÔN TỪ ĐÃ HỌC':'LUYỆN TẬP TỔNG HỢP'}</p><h2>${esc(q.question)}</h2><div class="quiz-options" role="group" aria-label="Chọn đáp án">${q.options.map((x,i)=>`<button class="quiz-option" data-answer="${i}" aria-pressed="false"><span class="option-letter">${'ABCD'[i]}</span>${esc(x)}</button>`).join('')}</div><div id="quiz-feedback" role="status"></div><button class="button primary full" data-action="grade" id="grade-button" style="margin-top:22px" disabled>Kiểm tra đáp án</button></div></div>`;}
   function restoreQuizState(){
     const button=$('grade-button');if(!button||!attempt)return;
@@ -158,7 +205,7 @@
   function aiPage(){
     const setup=localTutor?`<section id="ai-setup" class="notice ai-setup">
       <strong id="ai-mode-label">Đám mây · Gemma 4</strong>
-      <p id="ai-cloud-info">Gửi câu hỏi ngay. Không cần tải mô hình.</p>
+      <p id="ai-cloud-info">Không cần tải mô hình.</p>
       <details class="ai-local-options" ${localTutor.selection==='cloud'?'':'open'}>
         <summary>Tùy chọn chạy trên thiết bị</summary>
         <label for="ai-model">Mô hình trả lời</label>
@@ -178,7 +225,7 @@
     </section>`:aiConfigured?'':'<div class="notice">Agen AI đang chờ kết nối. <a href="#tools">Ghép và sao chép prompt</a></div>';
     const disabled=canChat()?'':'disabled';
     const history=localTutor?`<aside class="chat-history">
-      <details open><summary>Lịch sử trò chuyện</summary>
+      <details ${compactChat.matches?'':'open'}><summary>Lịch sử trò chuyện</summary>
         <div class="row">
           <button class="button small" type="button" data-action="chat-new">Cuộc trò chuyện mới</button>
           <button class="text-link" type="button" data-action="chat-delete" hidden>Xóa</button>
@@ -190,24 +237,24 @@
       <span><strong>Tìm trên web</strong><small>Khi bật, web gửi từ khóa từ câu hỏi tới Wikimedia.</small></span>
     </label>`:'';
     const privacy=localTutor?'Lịch sử lưu theo hồ sơ trên trình duyệt này.':'Tin nhắn được gửi tới nhà cung cấp AI khi bạn bấm Gửi.';
-    return heading('Agen AI, bạn học của bạn.','Hỏi nghĩa một từ, luyện đặt câu hoặc kiểm tra điều bạn chưa chắc.')+`<div class="chat-layout ${localTutor?'with-history':''}">
+    return `<div class="chat-layout ${localTutor?'with-history':''}">
+      <header class="ai-welcome">
+        <div class="agen-pet-perch" aria-hidden="true"><div id="agen-pet" class="agen-pet-sprite" data-mood="idle"></div></div>
+        <div><h1>Agen AI</h1><p>Hỏi nghĩa một từ, luyện đặt câu hoặc kiểm tra điều bạn chưa chắc.</p></div>
+      </header>
       ${history}
       <div class="chat-panel">
-        <div class="ai-welcome">
-          <div class="agen-pet-perch" aria-hidden="true"><div id="agen-pet" class="agen-pet-sprite" data-mood="idle"></div></div>
-          <h2>Hôm nay, mình cùng học gì?</h2>
-        </div>
         ${setup}
         <div class="ai-prompts"><button data-ai-prompt="Giải thích sustainable trong cụm a sustainable study routine cho học sinh lớp 11.">✧ Giải thích một từ theo ngữ cảnh</button><button data-ai-prompt="Hãy giúp tôi luyện đặt câu với contribute. Cho gợi ý, chờ tôi viết rồi mới góp ý.">✎ Luyện đặt câu, từng bước một</button></div>
         <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Cuộc trò chuyện"></div>
-        <form id="chat-form">
+        <div class="chat-dock"><form id="chat-form">
           ${search}
           <div class="chat-compose">
             <textarea id="chat-input" name="message" rows="2" maxlength="${localTutor?6000:2000}" required aria-label="Tin nhắn cho Agen AI" placeholder="Nhập điều bạn muốn học…" ${!localTutor&&!aiConfigured?'disabled':''}></textarea>
             <button class="button primary" type="submit" ${disabled} aria-label="Gửi tin nhắn">${icon('arrow')}</button>
           </div>
         </form>
-        <p id="chat-status" class="form-status" role="status"></p>
+        <p id="chat-status" class="form-status" role="status"></p></div>
         <p id="chat-privacy" class="privacy-note">${privacy} Hãy kiểm chứng câu trả lời.</p>
       </div>
     </div>`;
@@ -293,18 +340,40 @@
     const log=$('chat-log');
     log.scrollTop=log.scrollHeight;
   }
-  function accountPage(){return heading('Không gian mang tên bạn.','Điều chỉnh một mục tiêu vừa sức, rồi kiên trì với nó.')+`<div class="two-columns account-grid"><form id="profile-form" class="card"><h2>Hồ sơ học tập</h2><label>Tên hiển thị<input name="name" value="${esc(user.name)}" required minlength="2" maxlength="32"></label><label>Tên đăng nhập<input value="${esc(user.username)}" readonly aria-readonly="true"></label><label>Mục tiêu mỗi ngày<select name="goal">${[5,10,15].map(n=>`<option value="${n}" ${user.goal===n?'selected':''}>${n} câu trả lời đúng mới</option>`).join('')}</select></label><label>Hiệu ứng chuyển động<select id="motion-mode" name="motion">${[["system","Theo cài đặt hệ thống"],["full","Bật đầy đủ hiệu ứng"],["reduced","Giảm chuyển động"]].map(([v,t])=>`<option value="${v}" ${window.studyMotion?.preference()===v?"selected":""}>${t}</option>`).join("")}</select></label><p class="privacy-note">Tùy chọn chuyển động áp dụng riêng cho trình duyệt này.</p><p id="profile-status" class="form-status" role="status"></p><button class="button primary full">Lưu thay đổi</button></form><div class="card"><h2>Hành trình của bạn</h2><p class="subtext">Tiến độ, từ cá nhân và lịch ôn được lưu trong trình duyệt này. Không tự đồng bộ sang máy khác. Xóa dữ liệu website sẽ xóa hồ sơ.</p><button class="button full" data-action="guide-replay">${icon('book')} Đọc lại sách hướng dẫn</button><button class="button full" data-action="intro-replay" style="margin-top:12px">${icon('spark')} Xem lại intro</button><hr style="border:0;border-top:1px solid var(--line);margin:27px 0"><button class="button full danger" data-action="logout">Đăng xuất</button></div></div>`;}
+  function accountPage(){return heading('Không gian mang tên bạn.','Điều chỉnh một mục tiêu vừa sức, rồi kiên trì với nó.')+`<div class="two-columns account-grid"><form id="profile-form" class="card"><h2>Hồ sơ học tập</h2><label>Tên hiển thị<input name="name" value="${esc(user.name)}" required minlength="2" maxlength="32"></label><label>${user.socialProvider?'Phương thức đăng nhập':'Tên đăng nhập'}<input value="${esc(socialLabels[user.socialProvider]||user.username)}" readonly aria-readonly="true"></label><label>Mục tiêu mỗi ngày<select name="goal">${[5,10,15].map(n=>`<option value="${n}" ${user.goal===n?'selected':''}>${n} câu trả lời đúng mới</option>`).join('')}</select></label><label>Hiệu ứng chuyển động<select id="motion-mode" name="motion">${[["system","Theo cài đặt hệ thống"],["full","Bật đầy đủ hiệu ứng"],["reduced","Giảm chuyển động"]].map(([v,t])=>`<option value="${v}" ${window.studyMotion?.preference()===v?"selected":""}>${t}</option>`).join("")}</select></label><p class="privacy-note">Tùy chọn chuyển động áp dụng riêng cho trình duyệt này.</p><p id="profile-status" class="form-status" role="status"></p><button class="button primary full">Lưu thay đổi</button></form><div class="card"><h2>Hành trình của bạn</h2><p class="subtext">Tiến độ, từ cá nhân và lịch ôn được lưu trong trình duyệt này. Không tự đồng bộ sang máy khác. Xóa dữ liệu website sẽ xóa hồ sơ.</p><button class="button full" data-action="guide-replay">${icon('book')} Đọc lại sách hướng dẫn</button><button class="button full" data-action="intro-replay" style="margin-top:12px">${icon('spark')} Xem lại intro</button><hr style="border:0;border-top:1px solid var(--line);margin:27px 0"><button class="button full danger" data-action="logout">Đăng xuất</button></div></div>`;}
 
   document.addEventListener('click',async event=>{
+    if(event.target.closest('#mobile-more a'))$('mobile-more').close();
     const b=event.target.closest('button,[data-route]');if(!b||b.disabled)return;
     try{
+      if(b.dataset.socialProvider){
+        if(authBusy)return;
+        authBusy=true;
+        const status=$('social-status');
+        const controls=[...$('auth-screen').querySelectorAll('button:not(:disabled)')];
+        controls.forEach(button=>button.disabled=true);
+        status.textContent='';
+        try{
+          await socialAuth.signIn(b.dataset.socialProvider);
+          user=(await api('social-login',{})).user;
+          aiConfigured=false;
+          enter();
+        }catch(error){
+          status.textContent=error.message;
+        }finally{
+          await socialAuth.clear().catch(()=>{});
+          authBusy=false;
+          controls.forEach(button=>button.disabled=false);
+        }
+        return;
+      }
       if(b.dataset.route)return navigate(b.dataset.route);
       if(b.dataset.introChoice){introChoice=b.dataset.introChoice;showIntro();return;}
       if(b.dataset.chapter!==undefined){await changeGuide(Number(b.dataset.chapter));return;}
       if(b.dataset.template){const type=b.dataset.template;promptDraft.request=type==='quiz'?'Tạo 5 câu trắc nghiệm với 4 lựa chọn về từ này. Hỏi từng câu và đợi tôi trả lời trước khi giải thích đáp án.':type==='check'?'Kiểm tra câu tôi viết: nghĩa, ngữ pháp, cách dùng từ. Chỉ rõ lỗi và gợi ý để tôi tự sửa trước khi đưa câu mẫu.':'Giải thích nghĩa, từ loại và cho 2 ví dụ có bản dịch. Tạo 1 câu điền từ và chờ tôi trả lời trước khi đưa đáp án.';promptDraft.goal=type==='quiz'?'Luyện nhớ và dùng từ':type==='check'?'Tự sửa câu để dùng từ chính xác':'Hiểu và dùng từ theo ngữ cảnh';$('prompt-form').elements.request.value=promptDraft.request;$('prompt-form').elements.goal.value=promptDraft.goal;document.querySelectorAll('[data-template]').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));updatePrompt();return;}
       if(b.dataset.filter){deckFilter=b.dataset.filter;flashIndex=0;flipped=false;document.querySelectorAll('[data-filter]').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));renderFlash();return;}
       if(b.dataset.flashIndex!==undefined){flashIndex=Number(b.dataset.flashIndex);flipped=false;renderFlash();return;}
-      if(b.dataset.openWord){deckFilter='all';search='';flashIndex=words.findIndex(w=>w.id===b.dataset.openWord);flipped=false;navigate('flashcards');return;}
+      if(b.dataset.openWord){deckFilter='all';search='';openStudyCard=b.dataset.openWord;flipped=false;navigate('flashcards');return;}
       if(b.dataset.speak){if(!('speechSynthesis'in window))throw new Error('Trình duyệt này chưa hỗ trợ đọc từ.');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(b.dataset.speak);u.lang='en-US';u.rate=.85;speechSynthesis.speak(u);return;}
       if(b.dataset.deleteWord){if(!confirm('Xóa từ cá nhân này và lịch ôn của từ?'))return;await api('words/'+b.dataset.deleteWord,null,'DELETE');words=words.filter(w=>w.id!==b.dataset.deleteWord);renderFlash();toast('Đã xóa từ cá nhân.');return;}
       if(b.dataset.startQuiz){b.disabled=true;const version=routeVersion;const data=await api('quiz',{kind:b.dataset.startQuiz});if(version!==routeVersion||screen!=='app-shell')return;attempt={...data,kind:b.dataset.startQuiz};selectedAnswer=null;answerResult=null;$('main-content').innerHTML=quizPage();focusTitle($('main-content'));return;}
@@ -316,6 +385,8 @@
         return;
       }
       const action=b.dataset.action;
+      if(action==='open-more')$('mobile-more').showModal();
+      if(action==='close-more')$('mobile-more').close();
       if(action==='chat-new'&&!chatJob&&!deletingChat)openChat();
       if(action==='chat-delete'&&!chatJob&&!deletingChat&&chatSelection&&confirm('Xóa cuộc trò chuyện này?')){
         const id=chatSelection,owner=user.id;
@@ -337,11 +408,11 @@
       if(action==='login-tab')showAuth(false);
       if(action==='register-tab')showAuth(true);
       if(action==='retry')renderRoute();
-      if(action==='logout'){b.disabled=true;await api('logout',{});user=null;resetChat();attempt=null;words=[];promptDraft.context='';deckFilter='all';search='';flashIndex=0;introChoice='';$('card-dialog').close();history.replaceState(null,'',location.pathname);showAuth();}
+      if(action==='logout'){b.disabled=true;await api('logout',{});user=null;resetChat();attempt=null;words=[];promptDraft.context='';deckFilter='all';search='';flashIndex=0;openStudyCard=null;introChoice='';$('card-dialog').close();history.replaceState(null,'',location.pathname);showAuth();}
       if(action==='intro-back'){introStep--;showIntro();}
       if(action==='intro-next'){if(introStep<3){introStep++;showIntro();}else{b.disabled=true;user=(await api('profile',{intro:true})).user;guideReplay=user.guide>=4;guideStep=-1;showGuide();}}
       if(action==='intro-replay'){introStep=0;showIntro();}
-      if(action==='guide-replay'){guideReplay=true;guideStep=-1;showGuide();}
+      if(action==='guide-replay'){$('mobile-more').close();guideReplay=true;guideStep=-1;showGuide();}
       if(action==='guide-open')await moveGuideCover(true);
       if(action==='guide-back'){
         if(guideBusy)return;
@@ -376,7 +447,15 @@
       }
       if(action==='add-card'){$('card-form').reset();$('card-error').textContent='';$('card-dialog').showModal();}
       if(action==='close-card')$('card-dialog').close();
-      if(action==='flip'){if(flipping)return;flipping=true;const update=()=>{flipped=!flipped;renderFlash();};try{if(window.studyMotion)await window.studyMotion.flip(b,update);else update();}finally{flipping=false;}}
+      if(action==='flip'){
+        if(flipping)return;
+        flipping=true;
+        const card=document.querySelector('.flashcard');
+        const focusSelector=b.id==='flash-toggle'?'#flash-toggle':'.flashcard';
+        const hadFocus=document.activeElement===b;
+        const update=()=>{flipped=!flipped;renderFlash();if(hadFocus)document.querySelector(focusSelector)?.focus({preventScroll:true});};
+        try{if(window.studyMotion)await window.studyMotion.flip(card,update);else update();}finally{flipping=false;}
+      }
       if(action==='flash-next'||action==='flash-prev'){const list=filteredWords();flashIndex=(flashIndex+(action==='flash-next'?1:-1)+list.length)%list.length;flipped=false;renderFlash();}
       if(action==='remember-yes'||action==='remember-no'){if(!flipped)return;b.disabled=true;const w=filteredWords()[flashIndex];await api('study',{id:w.id,remembered:action==='remember-yes'});words=(await api('words')).words;flashIndex=(flashIndex+1)%Math.max(1,filteredWords().length);flipped=false;if($('flash-content'))renderFlash();toast(action==='remember-yes'?'Đã lưu. Hẹn gặp lại từ này ở lượt ôn sau.':'Đã đưa từ vào lượt ôn sớm.');}
       if(action==='quit-quiz'){if(!confirm('Kết thúc lượt này? Điểm các câu đã làm vẫn được giữ.'))return;attempt=null;renderRoute();}
@@ -446,14 +525,20 @@
       }
     }
   }
-  document.addEventListener('submit',async e=>{const f=e.target;if(!['auth-form','prompt-form','card-form','translate-form','chat-form','profile-form'].includes(f.id))return;e.preventDefault();if(f.id==='prompt-form')return;const b=f.querySelector('[type="submit"],button:not([type])');if(b?.disabled)return;if(b)b.disabled=true;try{
+  document.addEventListener('submit',async e=>{const f=e.target;if(!['auth-form','prompt-form','card-form','translate-form','chat-form','profile-form'].includes(f.id))return;e.preventDefault();if(f.id==='prompt-form'||(f.id==='auth-form'&&authBusy))return;const b=f.querySelector('[type="submit"],button:not([type])');if(b?.disabled)return;if(b)b.disabled=true;
+  if(f.id==='auth-form')authBusy=true;
+  try{
     if(f.id==='auth-form'){const data=Object.fromEntries(new FormData(f));$('auth-status').textContent='';user=(await api(f.dataset.register==='true'?'register':'login',data)).user;aiConfigured=(await api('session')).aiConfigured;enter();}
     if(f.id==='card-form'){await api('words',Object.fromEntries(new FormData(f)));words=(await api('words')).words;$('card-dialog').close();toast('Đã thêm từ mới vào bộ thẻ.');if(currentRoute==='flashcards'){deckFilter='custom';search='';flashIndex=0;flipped=false;renderRoute();}}
     if(f.id==='profile-form'){const data=Object.fromEntries(new FormData(f));user=(await api('profile',{name:data.name,goal:Number(data.goal)})).user;$('profile-button').textContent=user.name.slice(0,2).toUpperCase();$('profile-status').textContent='';toast('Đã lưu hồ sơ học tập.');}
     if(f.id==='translate-form'){translationController?.abort();const controller=new AbortController();translationController=controller;const status=$('translation-status'),output=$('translation-result'),copyButton=$('copy-translation');const [from,to]=f.elements.direction.value.split('-');const source=f.elements.source.value.trim();if(!source)throw new Error('Nhập nội dung cần dịch.');status.textContent='Đang dịch văn bản…';output.value='';copyButton.disabled=true;try{const result=await window.handbookLanguage.translate(source,from,to,AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]),true);if(!output.isConnected||controller.signal.aborted)return;output.value=result.translated;output.lang=to;copyButton.disabled=false;status.textContent='Đã dịch. Hãy đọc lại theo ngữ cảnh của bạn.';$('translation-provider').textContent=result.fallback?'Dịch bởi MyMemory':'Dịch bởi Google';}catch(err){if(controller.signal.aborted)return;throw new Error('Chưa dịch được lúc này. Kiểm tra kết nối mạng rồi thử lại.');}}
     if(f.id==='chat-form')await sendChat(f);
 
-  }catch(err){const id={'auth-form':'auth-status','card-form':'card-error','profile-form':'profile-status','translate-form':'translation-status','chat-form':'chat-status'}[f.id];if($(id))$(id).textContent=err.message;else toast(err.message);}finally{if(b?.isConnected)b.disabled=f.id==='chat-form'&&!canChat();}});
+  }catch(err){const id={'auth-form':'auth-status','card-form':'card-error','profile-form':'profile-status','translate-form':'translation-status','chat-form':'chat-status'}[f.id];if($(id))$(id).textContent=err.message;else toast(err.message);}finally{
+    if(f.id==='auth-form')authBusy=false;
+    if(b?.isConnected)b.disabled=f.id==='chat-form'&&!canChat();
+  }});
+  mobileNavigation.addEventListener('change',()=>{if(!mobileNavigation.matches)$('mobile-more').close();});
   window.addEventListener('hashchange',renderRoute);
   document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
   (async()=>{try{if(location.protocol==='file:')throw new Error('Hãy chạy MO-WEB.cmd trong thư mục dự án, rồi mở http://127.0.0.1:4317. Tài khoản cần máy chủ để hoạt động.');const session=await api('session');user=session.user;aiConfigured=session.aiConfigured;enter();}catch(e){$('boot').innerHTML=`<img class="brand-mark" src="book.png" alt=""><p class="error-card">${esc(e.message)}</p><button class="button" id="reload-app">Thử lại</button>`;$('reload-app').addEventListener('click',()=>location.reload());}})();
