@@ -514,85 +514,12 @@ html[data-motion="reduced"] #agen-pet[data-mood]{animation:none}
 .auth-social .button{min-height:44px}
 .auth-social .form-status{margin:0}
 .auth-social .form-status:empty{display:none}
-
-.auth-demo{margin-top:10px;border-color:#cbd8bf;background:#f3f7ee}
-#header-demo{min-height:36px;white-space:nowrap;background:#eef4e8;border-color:#cbd8bf}
-.demo-summary{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:space-between;
-  align-items:center;
-  gap:4px 16px;
-  margin:0 0 18px;
-  padding:9px 14px;
-  border:1px solid #d5dfcc;
-  border-radius:12px;
-  background:#eef4e8;
-  font-size:13px;
-}
-.demo-summary span{margin-inline-start:6px;color:var(--muted)}
-.demo-ranking-panel{margin-bottom:20px}
-#demo-dialog{
-  max-width:590px;
-  max-height:calc(100dvh - 32px);
-  padding:24px;
-  background:#fcfcf7;
-}
-#demo-dialog[open]{display:flex;flex-direction:column}
-#demo-dialog .dialog-top{gap:8px;margin-bottom:12px}
-#demo-dialog .dialog-top h2{font:700 clamp(20px,5vw,26px)/1.25 var(--serif);margin:0 0 5px}
-#demo-dialog .dialog-top p{font-size:13px;margin:0;color:#506052}
-#demo-dialog .dialog-top button{flex:none}
-#demo-status{margin:0}
-#demo-status:empty{display:none}
-#demo-list{list-style:none;padding:3px;margin:0 -3px;overflow-y:auto;min-height:0}
-#demo-list li+li{margin-top:6px}
-.demo-profile{
-  width:100%;
-  display:grid;
-  grid-template-columns:auto minmax(0,1fr) auto;
-  align-items:center;
-  gap:10px;
-  padding:8px 10px;
-  border:1px solid var(--line);
-  border-radius:12px;
-  background:#fff;
-  color:var(--ink);
-  font:inherit;
-  text-align:left;
-  cursor:pointer;
-}
-.demo-profile:hover,.demo-profile[aria-current]{background:#eef4e8;border-color:#cbd8bf}
-.demo-rank{
-  display:grid;
-  place-items:center;
-  min-width:35px;
-  height:32px;
-  border-radius:8px;
+.test-account-label{
+  display:inline-block;
+  padding:1px 6px;
+  border-radius:5px;
   background:var(--sage);
   color:var(--forest);
-  font-weight:700;
-  font-size:12px;
-}
-#demo-list li:nth-child(-n+3) .demo-rank{background:var(--lime)}
-.demo-identity,.demo-stats{display:grid;font-size:14px;line-height:1.35}
-.demo-identity{overflow-wrap:anywhere}
-.demo-stats{text-align:right;white-space:nowrap}
-.demo-profile small{font-size:11px;color:#506052}
-#demo-actions{
-  display:flex;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  gap:4px 12px;
-  padding-top:10px;
-  border-top:1px solid var(--line);
-  margin-top:10px;
-}
-#demo-actions .text-link{min-height:34px;align-content:center}
-@media(max-width:650px){
-  #demo-dialog{padding:16px}
-  .demo-profile{gap:7px;padding:8px}
-  .demo-rank{min-width:29px}
-  .demo-identity,.demo-stats{font-size:13px}
-  #header-demo{padding-inline:8px}
+  font-size:11px;
+  white-space:nowrap;
 }

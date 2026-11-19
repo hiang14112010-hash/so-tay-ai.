@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Tạo tài khoản kiểm thử · Sổ tay AI</title>
+  <link rel="icon" href="book.png" type="image/png">
+  <link rel="stylesheet" href="app.css?v=14">
+  <style>
+    .test-setup { max-width: 640px; margin: 0 auto; padding: clamp(16px, 4vw, 36px); }
+    .test-setup > .brand { display: inline-flex; margin: 0 0 20px; }
+    .test-setup h1 { font: 700 clamp(24px, 5vw, 34px)/1.2 var(--serif); margin: 0 0 12px; }
+    .test-setup code { overflow-wrap: anywhere; }
+    .test-setup table { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <main class="test-setup">
+    <a class="brand" href="./"><img class="brand-mark" src="book.png" alt=""><span>Sổ tay <b>AI</b></span></a>
+    <section class="card">
+      <h1>Tạo 10 tài khoản kiểm thử</h1>
+      <p>Tạo hồ sơ trong hệ thống đăng nhập thường của Sổ tay AI trên trình duyệt này. Mỗi hồ sơ có điểm XP và tiến độ học mô phỏng trong 7 ngày.</p>
+      <button id="install" class="button primary" type="button">Tạo tài khoản kiểm thử</button>
+      <p id="status" class="subtext" role="status"></p>
+      <div id="results" hidden>
+        <p>Mật khẩu chung của 10 tài khoản là <code id="password"></code>.</p>
+        <table class="leaderboard-table">
+          <thead><tr><th scope="col">Tên hiển thị</th><th scope="col">Tên đăng nhập</th></tr></thead>
+          <tbody id="profiles"></tbody>
+        </table>
+        <p>Nếu đang đăng nhập, hãy đăng xuất rồi dùng một tên đăng nhập ở trên. Bảng xếp hạng hiển thị các hồ sơ này với nhãn <strong>Kiểm thử</strong>.</p>
+        <a class="button" href="./">Mở Sổ tay AI</a>
+      </div>
+    </section>
+  </main>
+  <script type="module">
+    import {browserLocalAPI} from './local-api.mjs?v=6';
+    const api=browserLocalAPI();
+    const install=document.getElementById('install');
+    const status=document.getElementById('status');
+    install.addEventListener('click',async()=>{
+      install.disabled=true;
+      status.textContent='Đang chuẩn bị hồ sơ kiểm thử…';
+      try{
+        const {profiles,password,added}=await api.request('install-test-accounts',{});
+        document.getElementById('password').textContent=password;
+        const list=document.getElementById('profiles');
+        for(const {name,username} of profiles){
+          const row=list.insertRow();
+          row.insertCell().textContent=name;
+          row.insertCell().textContent=username;
+        }
+        document.getElementById('results').hidden=false;
+        status.textContent=added?'Đã tạo '+added+' tài khoản kiểm thử.':'Trình duyệt này đã có đủ 10 tài khoản kiểm thử.';
+        install.hidden=true;
+      }catch(error){
+        status.textContent=error.message;
+        install.disabled=false;
+      }
+    });
+  </script>
+</body>
+</html>
