@@ -7,9 +7,11 @@
   const brand=`<span class="brand"><img class="brand-mark" src="book.png" alt=""><span>Sổ tay <b>AI</b><small>HỌC CHỦ ĐỘNG, NHỚ DÀI LÂU</small></span></span>`;
   const nav=[['home','Tổng quan','home'],['tools','Công cụ AI','spark'],['exercises','Bài tập','exercise'],['flashcards','Flashcard','cards'],['review','Ôn tập','review'],['translate','Dịch thuật','translate'],['leaderboard','Xếp hạng','trophy'],['ai','Mây AI','spark']];
   let grading=false,flipping=false,guideBusy=false;
-  let user=null,aiConfigured=false,currentRoute='home',routeVersion=0,screen='boot',introStep=0,introChoice='',guideStep=-1,guideReplay=false,words=[],flashIndex=0,flipped=false,deckFilter='all',search='',attempt=null,selectedAnswer=null,answerResult=null,rankPeriod='week',chat=[],toastTimer,translationController;
+  let user=null,aiConfigured=false,currentRoute='home',routeVersion=0,screen='boot',introStep=0,introChoice='',guideStep=-1,guideReplay=false,words=[],flashIndex=0,flipped=false,deckFilter='all',search='',attempt=null,selectedAnswer=null,answerResult=null,rankPeriod='week',chat=[],chatDraft='',toastTimer,translationController;
+  const localTutor=window.studyAI;
+  const canChat=()=>localTutor?localTutor.state==='ready'&&!localTutor.busy:aiConfigured;
   let promptDraft={goal:'Hiểu và dùng từ theo ngữ cảnh',word:'sustainable',context:'Our school needs a sustainable way to reduce plastic waste.',level:'Lớp 11 · A2–B1',format:'Theo từng mục ngắn',request:'Giải thích nghĩa, từ loại và cho 2 ví dụ có bản dịch. Tạo 1 câu điền từ và chờ tôi trả lời trước khi đưa đáp án.'};
-  async function api(path,data,method){if(window.studyLocal){try{return await window.studyLocal.request(path,data,method);}catch(e){if(e.status===401&&user){user=null;chat=[];attempt=null;words=[];showAuth();}throw e;}}const response=await fetch('/api/'+path,{method:method||(data?'POST':'GET'),headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined,credentials:'same-origin',signal:AbortSignal.timeout(path==='ai'?35000:15000)});const result=await response.json();if(!response.ok){if(response.status===401&&user){user=null;chat=[];attempt=null;words=[];showAuth();}throw new Error(result.error||'Không thể hoàn thành yêu cầu.');}return result;}
+  async function api(path,data,method){if(window.studyLocal){try{return await window.studyLocal.request(path,data,method);}catch(e){if(e.status===401&&user){user=null;chat=[];chatDraft='';attempt=null;words=[];showAuth();}throw e;}}const response=await fetch('/api/'+path,{method:method||(data?'POST':'GET'),headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined,credentials:'same-origin',signal:AbortSignal.timeout(path==='ai'?35000:15000)});const result=await response.json();if(!response.ok){if(response.status===401&&user){user=null;chat=[];chatDraft='';attempt=null;words=[];showAuth();}throw new Error(result.error||'Không thể hoàn thành yêu cầu.');}return result;}
   function toast(message){clearTimeout(toastTimer);$('toast').textContent=message;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4000);}
   function showScreen(id){screen=id;for(const key of ['boot','auth-screen','intro-screen','guide-screen','app-shell'])$(key).hidden=key!==id;window.scrollTo(0,0);}
   function focusTitle(container){const title=container.querySelector('h1,h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});}}
@@ -110,7 +112,12 @@
   function enter(){if(!user)return showAuth();if(!user.intro){introStep=0;return showIntro();}if(user.guide<4){guideReplay=false;guideStep=user.guide===0?-1:user.guide;return showGuide();}showScreen('app-shell');$('profile-button').textContent=user.name.slice(0,2).toUpperCase();renderRoute();}
   function navigate(route){if(location.hash==='#'+route)renderRoute();else location.hash=route;}
   async function renderRoute(){if(!user||screen!=='app-shell')return;const version=++routeVersion;translationController?.abort();currentRoute=location.hash.slice(1)||'home';if(![...nav.map(x=>x[0]),'account'].includes(currentRoute))currentRoute='home';$('route-label').textContent=nav.find(x=>x[0]===currentRoute)?.[1]||'Tài khoản';document.title=$('route-label').textContent+' · Sổ tay AI';$('main-nav').innerHTML=nav.map(([id,label,i])=>`${id==='leaderboard'?'<div class="nav-separator"></div>':''}<a href="#${id}" class="nav-item ${currentRoute===id?'active':''}" ${currentRoute===id?'aria-current="page"':''} aria-label="${label}">${icon(i)}<span>${label}</span>${id==='ai'?'<span class="nav-mini">RIÊNG</span>':''}</a>`).join('');$('main-content').innerHTML='<div class="loading" role="status">Đang mở trang…</div>';
-    try{let html='';if(currentRoute==='home'){const [stats,data]=await Promise.all([api('dashboard'),api('words')]);words=data.words;html=home(stats);}else if(currentRoute==='tools')html=toolsPage();else if(currentRoute==='exercises')html=exercisePage();else if(currentRoute==='flashcards'||currentRoute==='review'){words=(await api('words')).words;html=currentRoute==='flashcards'?flashPage():reviewPage();}else if(currentRoute==='translate')html=translationPage();else if(currentRoute==='leaderboard')html=rankPage(await api('leaderboard?period='+rankPeriod));else if(currentRoute==='ai')html=aiPage();else html=accountPage();if(version!==routeVersion||screen!=='app-shell')return;$('main-content').innerHTML=html;$('main-content').classList.remove('route-enter');void $('main-content').offsetWidth;$('main-content').classList.add('route-enter');if(currentRoute==='tools')updatePrompt();if(currentRoute==='flashcards')renderFlash();if(currentRoute==='ai')renderChat();restoreQuizState();window.scrollTo(0,0);$('main-content').focus({preventScroll:true});}catch(e){if(version===routeVersion&&screen==='app-shell')$('main-content').innerHTML=`<div class="error-card" role="alert">${esc(e.message)} <button class="button small" data-action="retry">Thử lại</button></div>`;}
+    try{let html='';if(currentRoute==='home'){const [stats,data]=await Promise.all([api('dashboard'),api('words')]);words=data.words;html=home(stats);}else if(currentRoute==='tools')html=toolsPage();else if(currentRoute==='exercises')html=exercisePage();else if(currentRoute==='flashcards'||currentRoute==='review'){words=(await api('words')).words;html=currentRoute==='flashcards'?flashPage():reviewPage();}else if(currentRoute==='translate')html=translationPage();else if(currentRoute==='leaderboard')html=rankPage(await api('leaderboard?period='+rankPeriod));else if(currentRoute==='ai')html=aiPage();else html=accountPage();if(version!==routeVersion||screen!=='app-shell')return;$('main-content').innerHTML=html;$('main-content').classList.remove('route-enter');void $('main-content').offsetWidth;$('main-content').classList.add('route-enter');if(currentRoute==='tools')updatePrompt();if(currentRoute==='flashcards')renderFlash();if(currentRoute==='ai'){
+      $('chat-input').value=chatDraft;
+      chatDraft='';
+      syncTutor();
+      renderChat();
+    }restoreQuizState();window.scrollTo(0,0);$('main-content').focus({preventScroll:true});}catch(e){if(version===routeVersion&&screen==='app-shell')$('main-content').innerHTML=`<div class="error-card" role="alert">${esc(e.message)} <button class="button small" data-action="retry">Thử lại</button></div>`;}
   }
   function home(s){const date=new Date().toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',weekday:'long',day:'numeric',month:'long'});const w=words[(Math.floor(Date.now()/86400000))%40];const stat=(n,label,i)=>`<div class="stat"><span class="stat-icon">${icon(i)}</span><div><strong>${n}</strong><small>${label}</small></div></div>`;return heading(`Chào ${esc(user.name)} <span class="greeting-mark">✳</span>`,'Một ngày mới, một cơ hội để tiến bộ. Hôm nay mình học gì nhỉ?',`<span class="heading-date">${date}</span>`)+`<div class="dashboard-grid"><section class="card hero"><p class="eyebrow">HỌC CÓ CHỦ ĐÍCH · NHỚ CÓ PHƯƠNG PHÁP</p><h2>Mỗi từ mới,<br>mở thêm một thế giới.</h2><p>Bắt đầu từ một bộ thẻ nhỏ. Hiểu thật rõ, luyện thật đều, để kiến thức ở lại lâu hơn.</p><a class="button lime" href="#${s.due?'review':'flashcards'}">${s.due?'Ôn '+s.due+' từ đến hạn':'Bắt đầu học hôm nay'} ${icon('arrow')}</a><div class="hero-art" aria-hidden="true"><img class="hero-book" src="book.png" alt=""><span class="hero-spark">✧</span></div></section><section class="card daily-word"><p class="eyebrow">MỘT TỪ HAY CHO HÔM NAY</p><div class="word-heading"><h2 lang="en">${esc(w.word)}</h2><button class="icon-button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm ${esc(w.word)}">${icon('volume')}</button></div><span class="word-pos">${esc(w.pos)}</span><p class="meaning">${esc(w.meaning)}</p><p class="sentence" lang="en">“${esc(w.example)}”</p><button class="text-link" data-open-word="${w.id}">Khám phá trong Flashcard ↗</button></section></div><div class="stats-row">${stat(s.learned,'TỪ ĐÃ HỌC','book')}${stat(s.streak,'NGÀY LIÊN TIẾP','fire')}${stat(s.xp,'ĐIỂM KINH NGHIỆM','spark')}${stat(s.due,'TỪ ĐẾN LỊCH ÔN','review')}</div><div class="dashboard-grid"><section><div class="section-heading"><h2>Góc công cụ của bạn</h2><a class="text-link" href="#tools">Khám phá công cụ ↗</a></div><div class="tool-grid">${toolCard('tools','spark','Ghép prompt','Biến ý tưởng thành câu hỏi rõ ràng, hiệu quả.')}${toolCard('flashcards','cards','Flashcard','Lật thẻ, tự nhớ và lưu từ của riêng bạn.')}${toolCard('translate','translate','Dịch thuật','Hiểu từ và câu trong đúng ngữ cảnh.')}</div><div class="next-session">${icon('exercise')}<div><strong>Một chút thử thách, thêm chút tự tin.</strong><p>8 câu hỏi · Từ vựng & kỹ năng dùng AI</p></div><a class="button small" href="#exercises">Làm bài tập →</a></div></section><section class="card progress-card"><div class="section-heading"><h2>Nhịp học của bạn</h2><span class="pill green">7 ngày qua</span></div><p>Đều đặn một chút, mỗi ngày.</p><div class="goal-line"><span>Mục tiêu hôm nay</span><strong>${Math.min(s.today,user.goal)} / ${user.goal} câu đúng</strong></div><progress value="${Math.min(s.today,user.goal)}" max="${user.goal}" aria-label="Mục tiêu câu đúng hôm nay"></progress><div class="week-bars" aria-label="Điểm trong 7 ngày qua">${s.week.map(d=>`<div class="day-bar" title="${d.day}: ${d.xp} XP"><i style="height:${Math.max(6,Math.round(d.xp/Math.max(10,...s.week.map(x=>x.xp))*62))}px"></i>${new Date(d.day+'T12:00:00+07:00').toLocaleDateString('vi-VN',{weekday:'short'}).replace('Th ','T')}</div>`).join('')}</div><div class="daily-tip">${icon('spark')}Mỗi câu đúng mới là một bước tiến.</div></section></div>`;}
   function toolCard(route,i,title,text){return `<a class="tool-card" href="#${route}"><span class="tool-icon">${icon(i)}</span><span class="tool-arrow">${icon('diagonal')}</span><h3>${title}</h3><p>${text}</p></a>`;}
@@ -132,7 +139,50 @@
   }
   function translationPage(){return heading('Hiểu nghĩa. Nắm ngữ cảnh.','Dịch hai chiều Anh – Việt, rồi đối chiếu cách dùng của từ.')+`<form id="translate-form"><div class="two-columns equal"><section class="card translation-card"><div class="translation-header"><label for="translation-direction" class="muted">Ngôn ngữ gốc</label><select id="translation-direction" name="direction"><option value="en-vi">Tiếng Anh → Tiếng Việt</option><option value="vi-en">Tiếng Việt → Tiếng Anh</option></select></div><textarea id="translation-source" name="source" rows="7" maxlength="600" required aria-label="Nội dung cần dịch" placeholder="Ví dụ: Small steps lead to meaningful progress."></textarea><div class="translation-foot"><span id="translation-count">0 / 600 ký tự</span><button class="button primary small" type="submit">Dịch văn bản ${icon('arrow')}</button></div></section><section class="card translation-card translation-output"><div class="translation-header"><strong>Bản dịch</strong><span class="pill green">Đọc để hiểu</span></div><textarea id="translation-result" rows="7" readonly aria-label="Bản dịch" placeholder="Bản dịch sẽ xuất hiện ở đây…"></textarea><div class="translation-foot"><span id="translation-provider">Anh ↔ Việt</span><button class="button small" type="button" data-action="copy-translation" id="copy-translation" disabled>${icon('copy')} Sao chép</button></div></section></div><p id="translation-status" role="status" class="form-status"></p><p class="privacy-note">Khi bấm Dịch, nội dung được gửi tới Google; nếu dịch vụ không phản hồi, website thử MyMemory. Tránh gửi thông tin cá nhân. Bản dịch tự động cần được kiểm tra theo ngữ cảnh.</p><a class="text-link" href="https://www.oxfordlearnersdictionaries.com/" target="_blank" rel="noopener noreferrer">Đối chiếu từ với Oxford Learner’s Dictionaries ↗</a></form>`;}
   function rankPage(data){return heading('Xếp hạng trên máy.','So sánh tiến độ giữa các hồ sơ trong trình duyệt này, không phải bảng xếp hạng trực tuyến.',`<span class="pill green">${data.myRank?'Hạng của bạn: #'+data.myRank:'Học theo nhịp của mình'}</span>`)+`<div class="two-columns"><section class="card"><div class="section-heading"><h2>Bảng xếp hạng</h2><div class="segmented"><button data-rank-period="week" aria-pressed="${rankPeriod==='week'}">7 ngày</button><button data-rank-period="all" aria-pressed="${rankPeriod==='all'}">Tất cả</button></div></div>${data.rows.length?`<table class="leaderboard-table"><thead><tr><th>HẠNG</th><th>NGƯỜI HỌC</th><th>XP</th></tr></thead><tbody>${data.rows.map(r=>`<tr class="${r.me?'me':''}"><td class="rank-number">${r.rank<=3?'✧ ':''}${r.rank}</td><td><span class="rank-avatar">${esc(r.name.slice(0,2).toUpperCase())}</span>${esc(r.name)} ${r.me?'<span class="pill green">Bạn</span>':''}</td><td><strong>${r.xp}</strong></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><h2>Chưa có thứ hạng.</h2><p>Người học tham gia và có điểm sẽ xuất hiện ở đây. Bạn có thể là người đầu tiên.</p></div>'}</section><aside><div class="card" style="margin-bottom:20px"><h2>Chọn cách bạn tham gia</h2><p class="subtext">Chỉ tên hiển thị và điểm của các hồ sơ trên máy này được đưa lên bảng.</p><label class="check-label"><input id="rank-opt-in" type="checkbox" ${user.publicRank?'checked':''}><span>Hiển thị tôi trên bảng xếp hạng</span></label><p class="privacy-note">Bạn luôn học và tích điểm được khi tắt tùy chọn này.</p><a class="button primary full" href="#exercises">Luyện tập để tiến bộ ${icon('arrow')}</a></div><div class="leaderboard-rules"><h3>Điểm đến từ nỗ lực thật</h3><ul><li>+10 XP cho mỗi câu đúng mới trong ngày.</li><li>Câu làm lại không cộng điểm trùng.</li><li>Tự đánh giá flashcard không cộng XP.</li><li>Bảng 7 ngày dùng múi giờ Việt Nam.</li></ul><p>Điểm lưu trên máy nhằm tạo động lực tự học, không dùng để chứng nhận hay thi đua trực tuyến.</p></div></aside></div>`;}
-  function aiPage(){return heading('Mây AI, bạn học của bạn.','Một không gian riêng để hỏi, luyện tập và cùng suy nghĩ.')+`<div class="chat-panel"><div class="ai-welcome"><div class="orb" aria-hidden="true"></div><h2>Hôm nay, mình cùng học gì?</h2><p>Giải thích một từ, luyện đặt câu hoặc kiểm tra điều bạn chưa chắc.</p></div>${!aiConfigured?'<div class="notice">Bản GitHub Pages không chạy máy chủ AI. Bạn có thể ghép và sao chép prompt để dùng với công cụ AI của mình. Flashcard, bài tập và dịch thuật vẫn hoạt động.</div>':''}<div class="ai-prompts"><button data-ai-prompt="Giải thích sustainable trong cụm a sustainable study routine cho học sinh lớp 11.">✧ Giải thích một từ theo ngữ cảnh</button><button data-ai-prompt="Hãy giúp tôi luyện đặt câu với contribute. Cho gợi ý, chờ tôi viết rồi mới góp ý.">✎ Luyện đặt câu, từng bước một</button></div><div id="chat-log" class="chat-log" aria-live="polite" aria-label="Cuộc trò chuyện"></div><form id="chat-form" class="chat-compose"><textarea id="chat-input" name="message" rows="2" maxlength="2000" required aria-label="Tin nhắn cho Mây AI" placeholder="Nhập điều bạn muốn học…" ${!aiConfigured?'disabled':''}></textarea><button class="button primary" type="submit" ${!aiConfigured?'disabled':''} aria-label="Gửi tin nhắn">${icon('arrow')}</button></form><p id="chat-status" class="form-status" role="status"></p><p class="privacy-note">AI có thể sai. Hãy kiểm chứng thông tin. Tin nhắn và ngữ cảnh hội thoại được gửi tới nhà cung cấp AI khi bạn bấm Gửi; cuộc trò chuyện không được lưu sau khi tải lại trang.</p></div>`;}
+  function aiPage(){
+    const setup=localTutor?`<section id="ai-setup" class="notice ai-setup">
+      <p>Lần đầu bạn sẽ tải khoảng 870 MB. Mô hình chạy trên thiết bị và không tính phí theo lượt hỏi.</p>
+      <div class="row"><button class="button primary small" type="button" data-action="ai-enable">Bật Mây AI</button>
+      <a class="text-link" href="#tools">Ghép và sao chép prompt</a></div>
+      <progress id="ai-progress" max="100" hidden aria-label="Tiến độ tải mô hình"></progress>
+      <p id="ai-detail" role="status"></p>
+    </section>`:aiConfigured?'':'<div class="notice">Mây AI đang chờ kết nối. <a href="#tools">Ghép và sao chép prompt</a></div>';
+    const disabled=canChat()?'':'disabled';
+    const privacy=localTutor?'Tin nhắn được xử lý trên thiết bị của bạn.':'Tin nhắn được gửi tới nhà cung cấp AI khi bạn bấm Gửi.';
+    return heading('Mây AI, bạn học của bạn.','Hỏi nghĩa một từ, luyện đặt câu hoặc kiểm tra điều bạn chưa chắc.')+`<div class="chat-panel">
+      <div class="ai-welcome"><div class="orb" aria-hidden="true"></div><h2>Hôm nay, mình cùng học gì?</h2></div>
+      ${setup}
+      <div class="ai-prompts"><button data-ai-prompt="Giải thích sustainable trong cụm a sustainable study routine cho học sinh lớp 11.">✧ Giải thích một từ theo ngữ cảnh</button><button data-ai-prompt="Hãy giúp tôi luyện đặt câu với contribute. Cho gợi ý, chờ tôi viết rồi mới góp ý.">✎ Luyện đặt câu, từng bước một</button></div>
+      <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Cuộc trò chuyện"></div>
+      <form id="chat-form" class="chat-compose">
+        <textarea id="chat-input" name="message" rows="2" maxlength="2000" required aria-label="Tin nhắn cho Mây AI" placeholder="Nhập điều bạn muốn học…" ${!localTutor&&!aiConfigured?'disabled':''}></textarea>
+        <button class="button primary" type="submit" ${disabled} aria-label="Gửi tin nhắn">${icon('arrow')}</button>
+      </form>
+      <p id="chat-status" class="form-status" role="status"></p>
+      <p class="privacy-note">${privacy} Cuộc trò chuyện sẽ mất khi tải lại trang. Hãy kiểm chứng câu trả lời.</p>
+    </div>`;
+  }
+  function syncTutor(){
+    const setup=$('ai-setup');
+    if(!setup||!localTutor)return;
+    const {state,detail,progress,busy}=localTutor;
+    setup.hidden=state==='ready';
+    const button=setup.querySelector('button');
+    button.hidden=state==='unsupported';
+    button.disabled=state==='loading';
+    button.textContent=state==='loading'?'Đang bật…':state==='error'?'Thử lại':'Bật Mây AI';
+    const meter=$('ai-progress');
+    meter.hidden=state!=='loading';
+    if(progress===null)meter.removeAttribute('value');
+    else meter.value=progress;
+    const status=$('ai-detail');
+    if(status.textContent!==detail)status.textContent=detail;
+    $('chat-form').querySelector('button').disabled=!canChat();
+    const chatStatus=$('chat-status');
+    if(busy)chatStatus.textContent='Mây đang suy nghĩ…';
+    else if(chatStatus.textContent==='Mây đang suy nghĩ…')chatStatus.textContent='';
+  }
+  window.addEventListener('study-ai-state',syncTutor);
   function renderChat(){if(!$('chat-log'))return;$('chat-log').innerHTML=chat.map(m=>`<div class="message ${m.role==='user'?'user':''}"><strong>${m.role==='user'?'Bạn':'Mây AI'}</strong>${esc(m.content)}</div>`).join('');$('chat-log').scrollTop=$('chat-log').scrollHeight;}
   function accountPage(){return heading('Không gian mang tên bạn.','Điều chỉnh một mục tiêu vừa sức, rồi kiên trì với nó.')+`<div class="two-columns account-grid"><form id="profile-form" class="card"><h2>Hồ sơ học tập</h2><label>Tên hiển thị<input name="name" value="${esc(user.name)}" required minlength="2" maxlength="32"></label><label>Tên đăng nhập<input value="${esc(user.username)}" readonly aria-readonly="true"></label><label>Mục tiêu mỗi ngày<select name="goal">${[5,10,15].map(n=>`<option value="${n}" ${user.goal===n?'selected':''}>${n} câu trả lời đúng mới</option>`).join('')}</select></label><label>Hiệu ứng chuyển động<select id="motion-mode" name="motion">${[["system","Theo cài đặt hệ thống"],["full","Bật đầy đủ hiệu ứng"],["reduced","Giảm chuyển động"]].map(([v,t])=>`<option value="${v}" ${window.studyMotion?.preference()===v?"selected":""}>${t}</option>`).join("")}</select></label><p class="privacy-note">Tùy chọn chuyển động áp dụng riêng cho trình duyệt này.</p><p id="profile-status" class="form-status" role="status"></p><button class="button primary full">Lưu thay đổi</button></form><div class="card"><h2>Hành trình của bạn</h2><p class="subtext">Tiến độ, từ cá nhân và lịch ôn được lưu trong trình duyệt này. Không tự đồng bộ sang máy khác. Xóa dữ liệu website sẽ xóa hồ sơ.</p><button class="button full" data-action="guide-replay">${icon('book')} Đọc lại sách hướng dẫn</button><button class="button full" data-action="intro-replay" style="margin-top:12px">${icon('spark')} Xem lại intro</button><hr style="border:0;border-top:1px solid var(--line);margin:27px 0"><button class="button full danger" data-action="logout">Đăng xuất</button></div></div>`;}
 
@@ -151,13 +201,13 @@
       if(b.dataset.startQuiz){b.disabled=true;const version=routeVersion;const data=await api('quiz',{kind:b.dataset.startQuiz});if(version!==routeVersion||screen!=='app-shell')return;attempt={...data,kind:b.dataset.startQuiz};selectedAnswer=null;answerResult=null;$('main-content').innerHTML=quizPage();focusTitle($('main-content'));return;}
       if(b.dataset.answer!==undefined){if(answerResult||grading)return;selectedAnswer=Number(b.dataset.answer);document.querySelectorAll('[data-answer]').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));$('grade-button').disabled=false;return;}
       if(b.dataset.rankPeriod){rankPeriod=b.dataset.rankPeriod;return renderRoute();}
-      if(b.dataset.aiPrompt){if(!aiConfigured){toast('Mây AI chưa được kết nối. Bạn có thể dùng Công cụ AI để ghép prompt.');return;}$('chat-input').value=b.dataset.aiPrompt;$('chat-input').focus();return;}
+      if(b.dataset.aiPrompt){if(!localTutor&&!aiConfigured){toast('Mây AI chưa được kết nối. Bạn có thể dùng Công cụ AI để ghép prompt.');return;}$('chat-input').value=b.dataset.aiPrompt;$('chat-input').focus();return;}
       const action=b.dataset.action;
       if(action==='toggle-password'){const field=$('auth-password');const show=field.type==='password';field.type=show?'text':'password';b.textContent=show?'Ẩn':'Hiện';b.setAttribute('aria-label',show?'Ẩn mật khẩu':'Hiện mật khẩu');b.setAttribute('aria-pressed',String(show));}
       if(action==='login-tab')showAuth(false);
       if(action==='register-tab')showAuth(true);
       if(action==='retry')renderRoute();
-      if(action==='logout'){b.disabled=true;await api('logout',{});user=null;chat=[];attempt=null;words=[];promptDraft.context='';deckFilter='all';search='';flashIndex=0;introChoice='';$('card-dialog').close();history.replaceState(null,'',location.pathname);showAuth();}
+      if(action==='logout'){b.disabled=true;await api('logout',{});user=null;chat=[];chatDraft='';attempt=null;words=[];promptDraft.context='';deckFilter='all';search='';flashIndex=0;introChoice='';$('card-dialog').close();history.replaceState(null,'',location.pathname);showAuth();}
       if(action==='intro-back'){introStep--;showIntro();}
       if(action==='intro-next'){if(introStep<3){introStep++;showIntro();}else{b.disabled=true;user=(await api('profile',{intro:true})).user;guideReplay=user.guide>=4;guideStep=-1;showGuide();}}
       if(action==='intro-replay'){introStep=0;showIntro();}
@@ -181,8 +231,19 @@
           }finally{guideBusy=false;guideNavigation();}
         }
       }
+      if(action==='ai-enable'){
+        await localTutor.enable();
+        if(localTutor.state==='ready'&&$('chat-input')){
+          $('chat-status').textContent='Mây AI đã sẵn sàng.';
+          $('chat-input').focus();
+        }
+      }
       if(action==='copy-prompt'){if(!$('prompt-form').reportValidity())return;await copy($('prompt-output').textContent);}
-      if(action==='prompt-to-ai'){if(!$('prompt-form').reportValidity())return;const draft=$('prompt-output').textContent;location.hash='ai';const off=setInterval(()=>{if($('chat-input')){clearInterval(off);if(aiConfigured)$('chat-input').value=draft;else toast('Prompt đã được giữ trong Công cụ AI. Mây đang chờ kết nối.');}},50);setTimeout(()=>clearInterval(off),3000);}
+      if(action==='prompt-to-ai'){
+        if(!$('prompt-form').reportValidity())return;
+        chatDraft=$('prompt-output').textContent;
+        navigate('ai');
+      }
       if(action==='add-card'){$('card-form').reset();$('card-error').textContent='';$('card-dialog').showModal();}
       if(action==='close-card')$('card-dialog').close();
       if(action==='flip'){if(flipping)return;flipping=true;const update=()=>{flipped=!flipped;renderFlash();};try{if(window.studyMotion)await window.studyMotion.flip(b,update);else update();}finally{flipping=false;}}
@@ -202,8 +263,32 @@
     if(f.id==='card-form'){await api('words',Object.fromEntries(new FormData(f)));words=(await api('words')).words;$('card-dialog').close();toast('Đã thêm từ mới vào bộ thẻ.');if(currentRoute==='flashcards'){deckFilter='custom';search='';flashIndex=0;flipped=false;renderRoute();}}
     if(f.id==='profile-form'){const data=Object.fromEntries(new FormData(f));user=(await api('profile',{name:data.name,goal:Number(data.goal)})).user;$('profile-button').textContent=user.name.slice(0,2).toUpperCase();$('profile-status').textContent='';toast('Đã lưu hồ sơ học tập.');}
     if(f.id==='translate-form'){translationController?.abort();const controller=new AbortController();translationController=controller;const status=$('translation-status'),output=$('translation-result'),copyButton=$('copy-translation');const [from,to]=f.elements.direction.value.split('-');const source=f.elements.source.value.trim();if(!source)throw new Error('Nhập nội dung cần dịch.');status.textContent='Đang dịch văn bản…';output.value='';copyButton.disabled=true;try{const result=await window.handbookLanguage.translate(source,from,to,AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]),true);if(!output.isConnected||controller.signal.aborted)return;output.value=result.translated;output.lang=to;copyButton.disabled=false;status.textContent='Đã dịch. Hãy đọc lại theo ngữ cảnh của bạn.';$('translation-provider').textContent=result.fallback?'Dịch bởi MyMemory':'Dịch bởi Google';}catch(err){if(controller.signal.aborted)return;throw new Error('Chưa dịch được lúc này. Kiểm tra kết nối mạng rồi thử lại.');}}
-    if(f.id==='chat-form'){if(!aiConfigured)return;const message=f.elements.message.value.trim();if(!message)return;const input=f.elements.message;const status=$('chat-status');status.textContent='Mây đang suy nghĩ…';const chatOwner=user.id;const history=chat.slice(-8);chat.push({role:'user',content:message});input.value='';renderChat();try{const data=await api('ai',{message,history});if(user?.id!==chatOwner)return;chat.push({role:'assistant',content:data.answer});renderChat();if(status.isConnected)status.textContent='';}catch(err){if(user?.id!==chatOwner)return;chat.pop();renderChat();if(input.isConnected)input.value=message;throw err;}}
-  }catch(err){const id={'auth-form':'auth-status','card-form':'card-error','profile-form':'profile-status','translate-form':'translation-status','chat-form':'chat-status'}[f.id];if($(id))$(id).textContent=err.message;else toast(err.message);}finally{if(b?.isConnected)b.disabled=false;}});
+    if(f.id==='chat-form'){
+      if(!canChat())return;
+      const message=f.elements.message.value.trim();
+      if(!message)return;
+      const conversation=chat;
+      const history=chat.slice(-8);
+      $('chat-status').textContent='Mây đang suy nghĩ…';
+      chat.push({role:'user',content:message});
+      f.elements.message.value='';
+      renderChat();
+      try{
+        const data=await (localTutor?localTutor.reply(message,history):api('ai',{message,history}));
+        if(chat!==conversation)return;
+        chat.push({role:'assistant',content:data.answer});
+        renderChat();
+        if($('chat-status'))$('chat-status').textContent='';
+      }catch(err){
+        if(chat!==conversation)return;
+        chat.pop();
+        renderChat();
+        const input=$('chat-input');
+        if(input&&!input.value)input.value=message;
+        throw err;
+      }
+    }
+  }catch(err){const id={'auth-form':'auth-status','card-form':'card-error','profile-form':'profile-status','translate-form':'translation-status','chat-form':'chat-status'}[f.id];if($(id))$(id).textContent=err.message;else toast(err.message);}finally{if(b?.isConnected)b.disabled=f.id==='chat-form'&&!canChat();}});
   window.addEventListener('hashchange',renderRoute);
   document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
   (async()=>{try{if(location.protocol==='file:')throw new Error('Hãy chạy MO-WEB.cmd trong thư mục dự án, rồi mở http://127.0.0.1:4317. Tài khoản cần máy chủ để hoạt động.');const session=await api('session');user=session.user;aiConfigured=session.aiConfigured;enter();}catch(e){$('boot').innerHTML=`<img class="brand-mark" src="book.png" alt=""><p class="error-card">${esc(e.message)}</p><button class="button" id="reload-app">Thử lại</button>`;$('reload-app').addEventListener('click',()=>location.reload());}})();

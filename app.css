@@ -159,3 +159,9 @@ font-weight:400;line-height:1;color:#f5ffe4cc;text-shadow:0 0 16px #deffd967;tra
   .intro-orbit .orb{width:136px}
   .intro-orbit .orb::after{font-size:87px}
 }
+
+.ai-setup p{margin:0 0 12px}
+.ai-setup p:last-child{margin:10px 0 0}
+.ai-setup p:last-child:empty{display:none}
+.ai-setup progress{width:100%;margin-top:14px;accent-color:var(--forest)}
+.chat-log .message{white-space:pre-wrap;overflow-wrap:anywhere}
