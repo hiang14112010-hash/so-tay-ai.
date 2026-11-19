@@ -212,3 +212,7 @@ font-weight:400;line-height:1;color:#f5ffe4cc;text-shadow:0 0 16px #deffd967;tra
   .chat-history{margin-top:0}
   #chat-history-list{max-height:118px}
 }
+.ai-setup label{display:block;font-weight:700;margin:0 0 6px}
+.ai-model-row{gap:8px;margin:0 0 8px}
+.ai-model-row select{width:auto;max-width:100%;margin:0;padding:7px 10px}
+.ai-model-row .button{white-space:nowrap}

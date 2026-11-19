@@ -50,8 +50,8 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
       if(b.userId!==uid)throw fail('Hồ sơ trò chuyện đã thay đổi.',409);
       const id=field(b.id,36,36,'Mã cuộc trò chuyện');
       const turnId=field(b.turnId,36,36,'Mã tin nhắn');
-      const question=field(b.question,1,2000,'Câu hỏi');
-      const answer=field(b.answer,1,8000,'Câu trả lời');
+      const question=field(b.question,1,6000,'Câu hỏi');
+      const answer=field(b.answer,1,16000,'Câu trả lời');
       const conversations=state.conversations??=[];
       let thread=conversations.find(item=>item.id===id&&item.userId===uid);
       if(b.existing&&!thread)throw fail('Cuộc trò chuyện này đã bị xóa.',409);
@@ -67,7 +67,7 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
           return [{url:url.href,title:field(source.title,1,240,'Tên nguồn')}];
         }catch{return [];}
       }):[];
-      thread.messages.push({role:'user',content:question,turnId},{role:'assistant',content:answer,sources,note:String(b.note||'').slice(0,180)});
+      thread.messages.push({role:'user',content:question,turnId},{role:'assistant',content:answer,sources,note:String(b.note||'').slice(0,300)});
       thread.updated=now();
       result={thread};dirty=true;
     }else if(route==='conversations'&&verb==='DELETE'){

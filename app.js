@@ -10,7 +10,7 @@
   let user=null,aiConfigured=false,currentRoute='home',routeVersion=0,screen='boot',introStep=0,introChoice='',guideStep=-1,guideReplay=false,words=[],flashIndex=0,flipped=false,deckFilter='all',search='',attempt=null,selectedAnswer=null,answerResult=null,rankPeriod='week',chat=[],chatDraft='',toastTimer,translationController;
   const localTutor=window.studyAI;
   let chatThreads=[],chatSelection,chatJob=null,deletingChat=false;
-  const canChat=()=>!chatJob&&!deletingChat&&(localTutor?localTutor.state==='ready'&&!localTutor.busy:aiConfigured);
+  const canChat=()=>!chatJob&&!deletingChat&&(localTutor?localTutor.ready&&!localTutor.busy:aiConfigured);
   function resetChat(){
     chat=[];chatDraft='';chatThreads=[];chatSelection=undefined;chatJob=null;deletingChat=false;
   }
@@ -157,9 +157,16 @@
   function rankPage(data){return heading('Xếp hạng trên máy.','So sánh tiến độ giữa các hồ sơ trong trình duyệt này, không phải bảng xếp hạng trực tuyến.',`<span class="pill green">${data.myRank?'Hạng của bạn: #'+data.myRank:'Học theo nhịp của mình'}</span>`)+`<div class="two-columns"><section class="card"><div class="section-heading"><h2>Bảng xếp hạng</h2><div class="segmented"><button data-rank-period="week" aria-pressed="${rankPeriod==='week'}">7 ngày</button><button data-rank-period="all" aria-pressed="${rankPeriod==='all'}">Tất cả</button></div></div>${data.rows.length?`<table class="leaderboard-table"><thead><tr><th>HẠNG</th><th>NGƯỜI HỌC</th><th>XP</th></tr></thead><tbody>${data.rows.map(r=>`<tr class="${r.me?'me':''}"><td class="rank-number">${r.rank<=3?'✧ ':''}${r.rank}</td><td><span class="rank-avatar">${esc(r.name.slice(0,2).toUpperCase())}</span>${esc(r.name)} ${r.me?'<span class="pill green">Bạn</span>':''}</td><td><strong>${r.xp}</strong></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><h2>Chưa có thứ hạng.</h2><p>Người học tham gia và có điểm sẽ xuất hiện ở đây. Bạn có thể là người đầu tiên.</p></div>'}</section><aside><div class="card" style="margin-bottom:20px"><h2>Chọn cách bạn tham gia</h2><p class="subtext">Chỉ tên hiển thị và điểm của các hồ sơ trên máy này được đưa lên bảng.</p><label class="check-label"><input id="rank-opt-in" type="checkbox" ${user.publicRank?'checked':''}><span>Hiển thị tôi trên bảng xếp hạng</span></label><p class="privacy-note">Bạn luôn học và tích điểm được khi tắt tùy chọn này.</p><a class="button primary full" href="#exercises">Luyện tập để tiến bộ ${icon('arrow')}</a></div><div class="leaderboard-rules"><h3>Điểm đến từ nỗ lực thật</h3><ul><li>+10 XP cho mỗi câu đúng mới trong ngày.</li><li>Câu làm lại không cộng điểm trùng.</li><li>Tự đánh giá flashcard không cộng XP.</li><li>Bảng 7 ngày dùng múi giờ Việt Nam.</li></ul><p>Điểm lưu trên máy nhằm tạo động lực tự học, không dùng để chứng nhận hay thi đua trực tuyến.</p></div></aside></div>`;}
   function aiPage(){
     const setup=localTutor?`<section id="ai-setup" class="notice ai-setup">
-      <p>Lần đầu bạn sẽ tải khoảng 870 MB. Mô hình chạy trên thiết bị và không tính phí theo lượt hỏi.</p>
-      <div class="row"><button class="button primary small" type="button" data-action="ai-enable">Bật Mây AI</button>
-      <a class="text-link" href="#tools">Ghép và sao chép prompt</a></div>
+      <label for="ai-model">Mô hình trả lời</label>
+      <div class="row ai-model-row">
+        <select id="ai-model">
+          <option value="standard">Nhẹ · Qwen 1.5B</option>
+          <option value="advanced">Mạnh hơn · Qwen 3B</option>
+        </select>
+        <button class="button primary small" type="button" data-action="ai-enable">Bật Mây AI</button>
+      </div>
+      <p id="ai-model-info"></p>
+      <a class="text-link" href="#tools">Ghép và sao chép prompt</a>
       <progress id="ai-progress" max="100" hidden aria-label="Tiến độ tải mô hình"></progress>
       <p id="ai-detail" role="status"></p>
     </section>`:aiConfigured?'':'<div class="notice">Mây AI đang chờ kết nối. <a href="#tools">Ghép và sao chép prompt</a></div>';
@@ -187,7 +194,7 @@
         <form id="chat-form">
           ${search}
           <div class="chat-compose">
-            <textarea id="chat-input" name="message" rows="2" maxlength="2000" required aria-label="Tin nhắn cho Mây AI" placeholder="Nhập điều bạn muốn học…" ${!localTutor&&!aiConfigured?'disabled':''}></textarea>
+            <textarea id="chat-input" name="message" rows="2" maxlength="${localTutor?6000:2000}" required aria-label="Tin nhắn cho Mây AI" placeholder="Nhập điều bạn muốn học…" ${!localTutor&&!aiConfigured?'disabled':''}></textarea>
             <button class="button primary" type="submit" ${disabled} aria-label="Gửi tin nhắn">${icon('arrow')}</button>
           </div>
         </form>
@@ -222,12 +229,17 @@
   function syncTutor(){
     const setup=$('ai-setup');
     if(!setup||!localTutor)return;
-    const {state,detail,progress}=localTutor;
-    setup.hidden=state==='ready';
+    const {state,detail,progress,model,selection,activeModel,ready}=localTutor;
+    const selector=$('ai-model');
+    selector.value=selection;
+    selector.disabled=state==='loading'||state==='unsupported'||!!chatJob;
     const button=setup.querySelector('button');
-    button.hidden=state==='unsupported';
-    button.disabled=state==='loading';
-    button.textContent=state==='loading'?'Đang bật…':state==='error'?'Thử lại':'Bật Mây AI';
+    button.hidden=state==='unsupported'||ready;
+    setup.querySelector('a').hidden=ready;
+    button.disabled=state==='loading'||!!chatJob;
+    button.textContent=state==='loading'?'Đang bật…':state==='error'?'Thử lại':activeModel?'Đổi mô hình':'Bật Mây AI';
+    $('ai-model-info').textContent=ready?'Đang dùng '+model.label+'.'
+      :`Lần đầu tải khoảng ${model.download}.${selection==='advanced'?' Dành cho bài luận và câu hỏi nhiều ý. Cần nhiều bộ nhớ đồ họa hơn.':''}`;
     const meter=$('ai-progress');
     meter.hidden=state!=='loading';
     if(progress===null)meter.removeAttribute('value');
@@ -333,7 +345,7 @@
       }
       if(action==='ai-enable'){
         await localTutor.enable();
-        if(localTutor.state==='ready'&&$('chat-input')){
+        if(localTutor.ready&&$('chat-input')){
           $('chat-status').textContent='Mây AI đã sẵn sàng.';
           $('chat-input').focus();
         }
@@ -357,7 +369,7 @@
   });
   async function copy(text){if(!text)return;try{await navigator.clipboard.writeText(text);toast('Đã sao chép.');}catch{toast('Chưa truy cập được clipboard. Hãy chọn nội dung và dùng Ctrl+C.');}}
   document.addEventListener('input',e=>{if(e.target.closest('#prompt-form'))updatePrompt();if(e.target.id==='word-search'){search=e.target.value;flashIndex=0;flipped=false;renderFlash();}if(e.target.id==='translation-source'){$('translation-count').textContent=e.target.value.length+' / 600 ký tự';translationController?.abort();$('translation-result').value='';$('copy-translation').disabled=true;$('translation-status').textContent='';}});
-  document.addEventListener('change',async e=>{if(e.target.id==='motion-mode'){window.studyMotion?.setPreference(e.target.value);toast('Đã đổi chế độ chuyển động.');}if(e.target.closest('#prompt-form'))updatePrompt();if(e.target.id==='translation-direction'){translationController?.abort();$('translation-result').value='';$('copy-translation').disabled=true;$('translation-status').textContent='';$('translation-source').placeholder=e.target.value==='en-vi'?'Ví dụ: Small steps lead to meaningful progress.':'Ví dụ: Mỗi ngày, tôi học thêm một điều mới.';}if(e.target.id==='rank-opt-in'){const el=e.target;el.disabled=true;try{user=(await api('profile',{publicRank:el.checked})).user;toast(user.publicRank?'Đã tham gia bảng xếp hạng.':'Đã ẩn bạn khỏi bảng xếp hạng.');renderRoute();}catch(err){el.checked=!el.checked;el.disabled=false;toast(err.message);}}});
+  document.addEventListener('change',async e=>{if(e.target.id==='ai-model')localTutor.select(e.target.value);if(e.target.id==='motion-mode'){window.studyMotion?.setPreference(e.target.value);toast('Đã đổi chế độ chuyển động.');}if(e.target.closest('#prompt-form'))updatePrompt();if(e.target.id==='translation-direction'){translationController?.abort();$('translation-result').value='';$('copy-translation').disabled=true;$('translation-status').textContent='';$('translation-source').placeholder=e.target.value==='en-vi'?'Ví dụ: Small steps lead to meaningful progress.':'Ví dụ: Mỗi ngày, tôi học thêm một điều mới.';}if(e.target.id==='rank-opt-in'){const el=e.target;el.disabled=true;try{user=(await api('profile',{publicRank:el.checked})).user;toast(user.publicRank?'Đã tham gia bảng xếp hạng.':'Đã ẩn bạn khỏi bảng xếp hạng.');renderRoute();}catch(err){el.checked=!el.checked;el.disabled=false;toast(err.message);}}});
   async function sendChat(form){
     if(!canChat())return;
     const message=form.elements.message.value.trim();
