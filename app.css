@@ -455,12 +455,12 @@ html[data-motion="reduced"] #agen-pet[data-mood]{animation:none}
 .orbit-scene .orb::after{font-size:clamp(42px,8vw,92px);color:#f8ffe3cf;text-shadow:0 0 12px #c3edaa68}
 .auth-screen .orbit-scene{
   --orbit-x:min(34%,184px);
-  --orbit-y:105px;
+  --orbit-y:115px;
 }
 .auth-screen .orbit-scene .orb{
-  width:182px;
-  backdrop-filter:blur(1.5px);
-  -webkit-backdrop-filter:blur(1.5px);
+  width:174px;
+  backdrop-filter:blur(.8px) saturate(1.13);
+  -webkit-backdrop-filter:blur(.8px) saturate(1.13);
 }
 .auth-screen .orbit-scene .floating-word{
   padding:9px 12px;
@@ -472,8 +472,16 @@ html[data-motion="reduced"] #agen-pet[data-mood]{animation:none}
 .auth-screen .orbit-scene .floating-word small{color:#5d7052}
 
 @media(max-width:1050px){
-  .auth-screen .orbit-scene{--orbit-y:92px}
+  .auth-screen .orbit-scene{--orbit-y:102px}
   .auth-screen .orbit-scene .orb{width:160px}
+}
+@media (741px <= width <= 900px){
+  .auth-screen .orbit-scene .orb{width:138px}
+  .auth-screen .orbit-scene .floating-word{max-width:108px;padding:8px 9px}
+  .auth-screen .orbit-scene .floating-word.second{max-width:128px;gap:6px}
+  .auth-screen .orbit-scene .floating-word strong{font-size:17px}
+  .auth-screen .orbit-scene .floating-word.second strong{font-size:11px}
+  .auth-screen .orbit-scene .word-card-spark{font-size:19px}
 }
 @media(max-width:740px){
   .auth-screen .auth-art{padding:16px 20px 13px}

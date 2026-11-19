@@ -274,12 +274,20 @@
     remove.disabled=!!chatJob||deletingChat;
     document.querySelector('[data-action="chat-new"]').disabled=!!chatJob||deletingChat;
   }
-  function openChat(thread){
+  function openChat(thread,{compose=false}={}){
     selectChat(thread);
     renderChatHistory();
     renderChat();
     $('chat-input').value='';
     $('chat-status').textContent='';
+    if(compactChat.matches){
+      const history=document.querySelector('.chat-history details');
+      history.open=false;
+      if(!compose){
+        history.querySelector('summary').focus({preventScroll:true});
+        return;
+      }
+    }
     $('chat-input').focus();
   }
   function syncTutor(){
@@ -387,7 +395,7 @@
       const action=b.dataset.action;
       if(action==='open-more')$('mobile-more').showModal();
       if(action==='close-more')$('mobile-more').close();
-      if(action==='chat-new'&&!chatJob&&!deletingChat)openChat();
+      if(action==='chat-new'&&!chatJob&&!deletingChat)openChat(undefined,{compose:true});
       if(action==='chat-delete'&&!chatJob&&!deletingChat&&chatSelection&&confirm('Xóa cuộc trò chuyện này?')){
         const id=chatSelection,owner=user.id;
         deletingChat=true;
