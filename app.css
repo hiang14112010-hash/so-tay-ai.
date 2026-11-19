@@ -216,3 +216,7 @@ font-weight:400;line-height:1;color:#f5ffe4cc;text-shadow:0 0 16px #deffd967;tra
 .ai-model-row{gap:8px;margin:0 0 8px}
 .ai-model-row select{width:auto;max-width:100%;margin:0;padding:7px 10px}
 .ai-model-row .button{white-space:nowrap}
+
+.ai-setup #ai-cloud-info{margin:3px 0 8px}
+.ai-local-options summary{cursor:pointer;font-weight:600}
+.ai-local-options[open] summary{margin-bottom:10px}

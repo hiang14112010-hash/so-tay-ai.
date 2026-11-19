@@ -157,19 +157,24 @@
   function rankPage(data){return heading('Xếp hạng trên máy.','So sánh tiến độ giữa các hồ sơ trong trình duyệt này, không phải bảng xếp hạng trực tuyến.',`<span class="pill green">${data.myRank?'Hạng của bạn: #'+data.myRank:'Học theo nhịp của mình'}</span>`)+`<div class="two-columns"><section class="card"><div class="section-heading"><h2>Bảng xếp hạng</h2><div class="segmented"><button data-rank-period="week" aria-pressed="${rankPeriod==='week'}">7 ngày</button><button data-rank-period="all" aria-pressed="${rankPeriod==='all'}">Tất cả</button></div></div>${data.rows.length?`<table class="leaderboard-table"><thead><tr><th>HẠNG</th><th>NGƯỜI HỌC</th><th>XP</th></tr></thead><tbody>${data.rows.map(r=>`<tr class="${r.me?'me':''}"><td class="rank-number">${r.rank<=3?'✧ ':''}${r.rank}</td><td><span class="rank-avatar">${esc(r.name.slice(0,2).toUpperCase())}</span>${esc(r.name)} ${r.me?'<span class="pill green">Bạn</span>':''}</td><td><strong>${r.xp}</strong></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><h2>Chưa có thứ hạng.</h2><p>Người học tham gia và có điểm sẽ xuất hiện ở đây. Bạn có thể là người đầu tiên.</p></div>'}</section><aside><div class="card" style="margin-bottom:20px"><h2>Chọn cách bạn tham gia</h2><p class="subtext">Chỉ tên hiển thị và điểm của các hồ sơ trên máy này được đưa lên bảng.</p><label class="check-label"><input id="rank-opt-in" type="checkbox" ${user.publicRank?'checked':''}><span>Hiển thị tôi trên bảng xếp hạng</span></label><p class="privacy-note">Bạn luôn học và tích điểm được khi tắt tùy chọn này.</p><a class="button primary full" href="#exercises">Luyện tập để tiến bộ ${icon('arrow')}</a></div><div class="leaderboard-rules"><h3>Điểm đến từ nỗ lực thật</h3><ul><li>+10 XP cho mỗi câu đúng mới trong ngày.</li><li>Câu làm lại không cộng điểm trùng.</li><li>Tự đánh giá flashcard không cộng XP.</li><li>Bảng 7 ngày dùng múi giờ Việt Nam.</li></ul><p>Điểm lưu trên máy nhằm tạo động lực tự học, không dùng để chứng nhận hay thi đua trực tuyến.</p></div></aside></div>`;}
   function aiPage(){
     const setup=localTutor?`<section id="ai-setup" class="notice ai-setup">
-      <label for="ai-model">Mô hình trả lời</label>
-      <div class="row ai-model-row">
-        <select id="ai-model">
-          <option value="cloud">Đám mây · Gemma 4</option>
-          <option value="standard">Nhẹ · Qwen 1.5B</option>
-          <option value="advanced">Mạnh hơn · Qwen 3B</option>
-        </select>
-        <button class="button primary small" type="button" data-action="ai-enable">Bật Mây AI</button>
-      </div>
-      <p id="ai-model-info"></p>
-      <a class="text-link" href="#tools">Ghép và sao chép prompt</a>
-      <progress id="ai-progress" max="100" hidden aria-label="Tiến độ tải mô hình"></progress>
-      <p id="ai-detail" role="status"></p>
+      <strong id="ai-mode-label">Đám mây · Gemma 4</strong>
+      <p id="ai-cloud-info">Gửi câu hỏi ngay. Không cần tải mô hình.</p>
+      <details class="ai-local-options" ${localTutor.selection==='cloud'?'':'open'}>
+        <summary>Tùy chọn chạy trên thiết bị</summary>
+        <label for="ai-model">Mô hình trả lời</label>
+        <div class="row ai-model-row">
+          <select id="ai-model">
+            <option value="cloud">Đám mây · Gemma 4</option>
+            <option value="standard">Nhẹ · Qwen 1.5B</option>
+            <option value="advanced">Mạnh hơn · Qwen 3B</option>
+          </select>
+          <button class="button primary small" type="button" data-action="ai-enable" hidden>Bật Mây AI</button>
+        </div>
+        <p id="ai-model-info" hidden></p>
+        <a class="text-link" href="#tools" hidden>Ghép và sao chép prompt</a>
+        <progress id="ai-progress" max="100" hidden aria-label="Tiến độ tải mô hình"></progress>
+        <p id="ai-detail" role="status"></p>
+      </details>
     </section>`:aiConfigured?'':'<div class="notice">Mây AI đang chờ kết nối. <a href="#tools">Ghép và sao chép prompt</a></div>';
     const disabled=canChat()?'':'disabled';
     const history=localTutor?`<aside class="chat-history">
@@ -233,15 +238,18 @@
     const {state,detail,progress,model,selection,activeModel,ready}=localTutor;
     const selector=$('ai-model');
     selector.value=selection;
-    selector.disabled=state==='loading'||state==='unsupported'||!!chatJob;
+    selector.disabled=state==='loading'||!!chatJob;
     const button=setup.querySelector('button');
     button.hidden=state==='unsupported'||ready;
     setup.querySelector('a').hidden=ready;
     button.disabled=state==='loading'||!!chatJob;
     button.textContent=state==='loading'?'Đang bật…':state==='error'?'Thử lại':activeModel?'Đổi mô hình':'Bật Mây AI';
-    $('ai-model-info').textContent=selection==='cloud'?'Gửi câu hỏi ngay, không cần tải mô hình.'
-      :ready?'Đang dùng '+model.label+'.'
-      :`Lần đầu tải khoảng ${model.download}.${selection==='advanced'?' Dành cho bài luận và câu hỏi nhiều ý. Cần nhiều bộ nhớ đồ họa hơn.':''}`;
+    const cloud=selection==='cloud';
+    $('ai-mode-label').textContent=cloud?model.label:'Trên thiết bị · '+model.label;
+    $('ai-cloud-info').hidden=!cloud;
+    const modelInfo=$('ai-model-info');
+    modelInfo.hidden=cloud||ready;
+    modelInfo.textContent=cloud||ready?'':`Tải khoảng ${model.download} khi bấm Bật Mây AI.`;
     $('chat-privacy').textContent=selection==='cloud'
       ?'Khi gửi, câu hỏi và tối đa 4 lượt hỏi đáp gần nhất được chuyển tới Cloudflare để tạo câu trả lời. Lịch sử vẫn lưu trên trình duyệt này.'
       :'Mô hình chạy trên thiết bị. Lịch sử lưu theo hồ sơ trên trình duyệt này. Hãy kiểm chứng câu trả lời.';

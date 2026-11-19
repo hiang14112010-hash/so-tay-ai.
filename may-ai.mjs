@@ -33,12 +33,7 @@ async function fitRequest(engine, system, message, history, desiredTokens) {
 }
 
 export function browserTutor() {
-  const preferenceKey = 'so-tay-ai-mode:' + new URL('.', import.meta.url).pathname;
   let selection = 'cloud';
-  try {
-    const saved = localStorage.getItem(preferenceKey);
-    if (Object.hasOwn(models, saved)) selection = saved;
-  } catch {}
   let session;
   let state = 'idle';
   let progress = null;
@@ -74,7 +69,6 @@ export function browserTutor() {
         state = 'idle';
         detail = '';
       }
-      try { localStorage.setItem(preferenceKey, key); } catch {}
       notify();
     },
 
@@ -126,7 +120,6 @@ export function browserTutor() {
         session = current;
         state = 'ready';
         detail = '';
-        try { localStorage.setItem(preferenceKey, key); } catch {}
       } catch (error) {
         current?.worker.terminate();
         console.warn('Không khởi động được Mây AI:', error);
