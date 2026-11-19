@@ -1,4 +1,5 @@
 import {vocabulary,exercises} from './learning-data.mjs';
+import {addTestProgress,sampleRanking,testNames,testPassword} from './test-accounts.mjs?v=2';
 
 const fresh=()=>({users:[],cards:[],reviews:[],awards:[],attempts:[],conversations:[]});
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
@@ -16,7 +17,6 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
     return {id:crypto.randomUUID(),username,name,salt,password:await passwordHash(password,salt),intro:false,guide:0,goal:10,publicRank:false,created};
   }
   async function installTestAccounts(state){
-    const {testNames,testPassword,addTestProgress}=await import('./test-accounts.mjs');
     const profiles=[],created=now();
     let added=0;
     for(const [index,name] of testNames.entries()){
@@ -147,14 +147,18 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
       result={correct,correctIndex:q.correct,explanation:q.explanation,xp,score:a.score,earned:a.earned,total:a.questions.length,next:next(a)};dirty=true;
     }else if(route==='leaderboard'){
       const period=url.searchParams.get('period')==='all'?'all':'week',since=period==='all'?'0000-00-00':day(-6);
-      const rows=state.users.filter(u=>u.publicRank||u.testSlot).map(u=>({
-        id:u.id,name:u.name,created:u.created,testSlot:u.testSlot,
+      const localRows=state.users.filter(u=>u.publicRank&&!u.testSlot).map(u=>({
+        name:u.name,created:u.created,me:u.id===uid,
         xp:state.awards.filter(a=>a.userId===u.id&&a.day>=since).reduce((sum,a)=>sum+a.xp,0)
-      })).filter(u=>u.xp>0||u.testSlot).sort((a,b)=>b.xp-a.xp||a.created-b.created);
+      })).filter(u=>u.xp>0);
+      const sampleRows=sampleRanking.map(({name,slot,xp})=>({
+        name,xp,created:Number.MAX_SAFE_INTEGER,testAccount:true,me:user.testSlot===slot
+      }));
+      const rows=[...localRows,...sampleRows].sort((a,b)=>b.xp-a.xp||a.created-b.created);
       const visibleRows=rows.map((r,i)=>({
-        name:r.name,xp:r.xp,rank:i+1,me:r.id===uid,...(r.testSlot?{testAccount:true}:{})
+        name:r.name,xp:r.xp,rank:i+1,me:r.me,...(r.testAccount?{testAccount:true}:{})
       })).filter(r=>r.rank<=50||r.testAccount);
-      return {rows:visibleRows,myRank:rows.findIndex(r=>r.id===uid)+1||null,participating:!!(user.publicRank||user.testSlot),period,local:true};
+      return {rows:visibleRows,myRank:rows.findIndex(r=>r.me)+1||null,participating:!!(user.publicRank||user.testSlot),period,local:true};
     }else if(route==='ai')throw fail('Bản GitHub Pages chưa kết nối AI. Dùng công cụ ghép prompt với AI của bạn.',503);
     else throw fail('Không tìm thấy chức năng này.',404);
     if(dirty)await write(state);return result;

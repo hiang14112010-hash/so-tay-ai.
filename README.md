@@ -6,9 +6,9 @@ Website học từ vựng tiếng Anh lớp 11, có intro, sách hướng dẫn 
 
 Bản này chạy hoàn toàn trong trình duyệt. Hồ sơ, mật khẩu đã băm, từ vựng và tiến độ được lưu bằng IndexedDB trên từng trình duyệt. Không có máy chủ xác thực; mật khẩu hồ sơ chỉ giúp phân biệt người dùng trên máy, không bảo vệ dữ liệu trước người có quyền truy cập thiết bị. Xóa dữ liệu website sẽ xóa hồ sơ.
 
-Bảng xếp hạng chỉ so sánh các hồ sơ trên cùng trình duyệt. Chấm điểm chạy ở phía trình duyệt nên chỉ phù hợp tự học.
+Bảng xếp hạng hiển thị 10 hồ sơ mô phỏng giống nhau trên mọi trình duyệt, cùng các hồ sơ đã chọn tham gia trên máy hiện tại. Nghĩa của dấu * bên cạnh hồ sơ được giải thích ngay trên bảng. Chấm điểm chạy ở phía trình duyệt nên chỉ phù hợp tự học.
 
-Trang `tao-tai-khoan-kiem-thu.html` tạo 10 hồ sơ đăng nhập thử với dữ liệu học mô phỏng trong 7 ngày khi người dùng bấm nút tạo. Cả 10 hồ sơ xuất hiện trên bảng xếp hạng của trình duyệt đã tạo, cùng một ghi chú chung về nguồn dữ liệu mô phỏng.
+Trang `tao-tai-khoan-kiem-thu.html` tạo các hồ sơ đăng nhập thử trong trình duyệt hiện tại. Trang `xep-hang-mau.html` cho xem bảng mẫu và biểu đồ 7 ngày mà không cần đăng nhập.
 
 Agen AI mặc định chạy Gemma 4 qua Cloudflare Workers AI. Khi gửi, trình duyệt chuyển câu hỏi và tối đa bốn lượt hỏi đáp gần nhất tới Worker. Lịch sử lưu theo hồ sơ bằng IndexedDB. Khi bật Tìm trên web, trình duyệt gửi từ khóa của câu hỏi tới Wikimedia để tìm nguồn.
 
