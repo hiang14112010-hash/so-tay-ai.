@@ -11,7 +11,7 @@
   const localTutor=window.studyAI;
   const socialAuth=window.studySocial;
   const socialLabels={google:'Google',facebook:'Facebook'};
-  let authBusy=false;
+  let authBusy=false,demoBusy=false;
   const compactChat=matchMedia('(max-width:820px)');
   const mobileNavigation=matchMedia('(max-width:650px)');
   const secondaryRoutes=['tools','translate','leaderboard'];
@@ -65,6 +65,7 @@
           <button class="button primary full auth-submit" type="submit"><span>${register?'Tạo tài khoản của tôi':'Vào không gian học'}</span>${icon('arrow')}</button>
         </form>
         ${socialControls}
+        ${local?'<button class="button full auth-demo" type="button" data-action="open-demo" aria-haspopup="dialog" aria-controls="demo-dialog">'+icon('trophy')+' Chế độ thuyết trình</button>':''}
         <p class="auth-note">Không cần email. Chỉ cần một chút tò mò.</p>
         <details class="auth-storage"><summary>${icon('shield')}<span>${storageSummary}</span><span class="storage-plus" aria-hidden="true">＋</span></summary><p>${storageDetail} ${local?'Bảng xếp hạng chỉ gồm các hồ sơ trên cùng trình duyệt.':'Bạn tự chọn có hiển thị trên bảng xếp hạng hay không.'}</p><p>Hãy ghi nhớ tên đăng nhập và mật khẩu của bạn.</p></details>
       </div><p class="auth-panel-footer">HỌC CHỦ ĐỘNG <span>✦</span> TIẾN BỘ MỖI NGÀY</p></div>
@@ -76,6 +77,65 @@
       }).catch(()=>{
         if(panel.isConnected)panel.querySelector('[role="status"]').textContent='Chưa tải được đăng nhập Google/Facebook.';
       });
+    }
+  }
+  async function openDemo(){
+    if(authBusy||demoBusy)return;
+    const dialog=$('demo-dialog'),status=$('demo-status'),list=$('demo-list');
+    $('demo-actions').hidden=!user?.demo;
+    list.replaceChildren();
+    status.textContent='Đang mở hồ sơ mẫu…';
+    dialog.showModal();
+    try{
+      const {profiles}=await api('demo-profiles');
+      status.textContent='';
+      list.innerHTML=profiles.map(p=>`
+        <li><button class="demo-profile" type="button" data-demo-profile="${p.id}" ${p.me?'aria-current="true"':''}>
+          <span class="demo-rank" aria-label="Hạng ${p.rank}">#${p.rank}</span>
+          <span class="demo-identity"><strong>${esc(p.name)}</strong><small>@${esc(p.username)}${p.me?' · Đang xem':''}</small></span>
+          <span class="demo-stats"><strong>${p.xp} XP</strong><small>${p.learned} từ · ${p.activeDays}/7 ngày</small></span>
+        </button></li>`).join('');
+      list.scrollTop=0;
+    }catch(error){
+      status.textContent=error.message;
+    }
+  }
+  function clearProfileView(){
+    ++routeVersion;
+    translationController?.abort();
+    resetChat();
+    attempt=null;
+    selectedAnswer=null;
+    answerResult=null;
+    words=[];
+    promptDraft.context='';
+    deckFilter='all';
+    search='';
+    flashIndex=0;
+    flipped=false;
+    openStudyCard=null;
+    introChoice='';
+    rankPeriod='week';
+    $('card-dialog').close();
+    $('demo-dialog').close();
+  }
+  async function enterDemo(id){
+    if(demoBusy||authBusy)return;
+    demoBusy=true;
+    const list=$('demo-list');
+    list.inert=true;
+    try{
+      const {user:profile}=await api('demo-login',{id});
+      clearProfileView();
+      user=profile;
+      history.replaceState(null,'','#home');
+      enter();
+      $('main-content').focus({preventScroll:true});
+    }catch(error){
+      $('demo-status').textContent=error.message;
+    }finally{
+      demoBusy=false;
+      list.inert=false;
     }
   }
   const introSlides=[
@@ -135,7 +195,7 @@
       const title=book.querySelector('h2');title.tabIndex=-1;title.focus({preventScroll:true});
     }finally{guideBusy=false;guideNavigation();}
   }
-  function enter(){if(!user)return showAuth();if(!user.intro){introStep=0;return showIntro();}if(user.guide<4){guideReplay=false;guideStep=user.guide===0?-1:user.guide;return showGuide();}showScreen('app-shell');$('profile-button').textContent=user.name.slice(0,2).toUpperCase();renderRoute();}
+  function enter(){if(!user)return showAuth();if(!user.intro){introStep=0;return showIntro();}if(user.guide<4){guideReplay=false;guideStep=user.guide===0?-1:user.guide;return showGuide();}showScreen('app-shell');$('header-demo').hidden=!user.demo;$('header-grade').hidden=!!user.demo;$('profile-button').textContent=user.name.slice(0,2).toUpperCase();renderRoute();}
   function navigate(route){if(location.hash==='#'+route)renderRoute();else location.hash=route;}
   function renderNavigation(){
     const item=(route,label,type,active)=>`<a href="#${route}" class="nav-item ${active?'active':''}" ${active?'aria-current="page"':''} aria-label="${label}">${icon(type)}<span>${label}</span></a>`;
@@ -171,7 +231,7 @@
       renderChatHistory();
     }restoreQuizState();window.scrollTo(0,0);$('main-content').focus({preventScroll:true});}catch(e){if(version===routeVersion&&screen==='app-shell')$('main-content').innerHTML=`<div class="error-card" role="alert">${esc(e.message)} <button class="button small" data-action="retry">Thử lại</button></div>`;}
   }
-  function home(s){const lastCard=getStudyCard();const resume=words.some(word=>word.id===lastCard);const date=new Date().toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',weekday:'long',day:'numeric',month:'long'});const w=words[(Math.floor(Date.now()/86400000))%40];const stat=(n,label,i)=>`<div class="stat"><span class="stat-icon">${icon(i)}</span><div><strong>${n}</strong><small>${label}</small></div></div>`;return heading(`Chào ${esc(user.name)} <span class="greeting-mark">✳</span>`,'Một ngày mới, một cơ hội để tiến bộ. Hôm nay mình học gì nhỉ?',`<span class="heading-date">${date}</span>`)+`<div class="dashboard-grid"><section class="card hero"><div class="hero-copy"><p class="eyebrow">HỌC TIẾP</p><h2>${s.due?'Ôn '+s.due+' từ đến hạn':resume?'Tiếp tục bộ thẻ':'Từ đầu tiên của bạn'}</h2><p>${s.due?'Ôn những từ đã học bằng một lượt trắc nghiệm ngắn.':resume?'Mở lại bộ Flashcard từ thẻ bạn xem gần nhất.':'Lật một flashcard, thử nhớ nghĩa rồi xem ví dụ.'}</p><a class="button lime" href="#${s.due?'review':'flashcards'}">${s.due?'Bắt đầu ôn':resume?'Tiếp tục học':'Mở Flashcard'} ${icon('arrow')}</a></div><div class="hero-art" aria-hidden="true"><img class="hero-book" src="book.png" alt=""><span class="hero-spark">✧</span></div></section><section class="card daily-word"><p class="eyebrow">MỘT TỪ HAY CHO HÔM NAY</p><div class="word-heading"><h2 lang="en">${esc(w.word)}</h2><button class="icon-button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm ${esc(w.word)}">${icon('volume')}</button></div><span class="word-pos">${esc(w.pos)}</span><p class="meaning">${esc(w.meaning)}</p><p class="sentence" lang="en">“${esc(w.example)}”</p><button class="text-link" data-open-word="${w.id}">Khám phá trong Flashcard ↗</button></section></div><div class="stats-row">${stat(s.learned,'TỪ ĐÃ HỌC','book')}${stat(s.streak,'NGÀY LIÊN TIẾP','fire')}${stat(s.xp,'ĐIỂM KINH NGHIỆM','spark')}${stat(s.due,'TỪ ĐẾN LỊCH ÔN','review')}</div><div class="dashboard-grid"><section><div class="section-heading"><h2>Góc công cụ của bạn</h2><a class="text-link" href="#tools">Khám phá công cụ ↗</a></div><div class="tool-grid">${toolCard('tools','spark','Ghép prompt','Biến ý tưởng thành câu hỏi rõ ràng, hiệu quả.')}${toolCard('flashcards','cards','Flashcard','Lật thẻ, tự nhớ và lưu từ của riêng bạn.')}${toolCard('translate','translate','Dịch thuật','Hiểu từ và câu trong đúng ngữ cảnh.')}</div><div class="next-session">${icon('exercise')}<div><strong>Một chút thử thách, thêm chút tự tin.</strong><p>8 câu hỏi · Từ vựng & kỹ năng dùng AI</p></div><a class="button small" href="#exercises">Làm bài tập →</a></div></section><section class="card progress-card"><div class="section-heading"><h2>Nhịp học của bạn</h2><span class="pill green">7 ngày qua</span></div><p>Đều đặn một chút, mỗi ngày.</p><div class="goal-line"><span>Mục tiêu hôm nay</span><strong>${Math.min(s.today,user.goal)} / ${user.goal} câu đúng</strong></div><progress value="${Math.min(s.today,user.goal)}" max="${user.goal}" aria-label="Mục tiêu câu đúng hôm nay"></progress><div class="week-bars" aria-label="Điểm trong 7 ngày qua">${s.week.map(d=>`<div class="day-bar" title="${d.day}: ${d.xp} XP"><i style="height:${Math.max(6,Math.round(d.xp/Math.max(10,...s.week.map(x=>x.xp))*62))}px"></i>${new Date(d.day+'T12:00:00+07:00').toLocaleDateString('vi-VN',{weekday:'short'}).replace('Th ','T')}</div>`).join('')}</div><div class="daily-tip">${icon('spark')}Mỗi câu đúng mới là một bước tiến.</div></section></div>`;}
+  function home(s){const lastCard=getStudyCard();const resume=words.some(word=>word.id===lastCard);const date=new Date().toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',weekday:'long',day:'numeric',month:'long'});const w=words[(Math.floor(Date.now()/86400000))%40];const stat=(n,label,i)=>`<div class="stat"><span class="stat-icon">${icon(i)}</span><div><strong>${n}</strong><small>${label}</small></div></div>`;return heading(`Chào ${esc(user.name)} <span class="greeting-mark">✳</span>`,'Một ngày mới, một cơ hội để tiến bộ. Hôm nay mình học gì nhỉ?',`<span class="heading-date">${date}</span>`)+(user.demo?`<div class="demo-summary"><div><strong>Hồ sơ khách mẫu</strong> <span>@${esc(user.username)}</span></div><a class="text-link" href="#leaderboard">Xem xếp hạng ↗</a></div>`:'')+`<div class="dashboard-grid"><section class="card hero"><div class="hero-copy"><p class="eyebrow">HỌC TIẾP</p><h2>${s.due?'Ôn '+s.due+' từ đến hạn':resume?'Tiếp tục bộ thẻ':'Từ đầu tiên của bạn'}</h2><p>${s.due?'Ôn những từ đã học bằng một lượt trắc nghiệm ngắn.':resume?'Mở lại bộ Flashcard từ thẻ bạn xem gần nhất.':'Lật một flashcard, thử nhớ nghĩa rồi xem ví dụ.'}</p><a class="button lime" href="#${s.due?'review':'flashcards'}">${s.due?'Bắt đầu ôn':resume?'Tiếp tục học':'Mở Flashcard'} ${icon('arrow')}</a></div><div class="hero-art" aria-hidden="true"><img class="hero-book" src="book.png" alt=""><span class="hero-spark">✧</span></div></section><section class="card daily-word"><p class="eyebrow">MỘT TỪ HAY CHO HÔM NAY</p><div class="word-heading"><h2 lang="en">${esc(w.word)}</h2><button class="icon-button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm ${esc(w.word)}">${icon('volume')}</button></div><span class="word-pos">${esc(w.pos)}</span><p class="meaning">${esc(w.meaning)}</p><p class="sentence" lang="en">“${esc(w.example)}”</p><button class="text-link" data-open-word="${w.id}">Khám phá trong Flashcard ↗</button></section></div><div class="stats-row">${stat(s.learned,'TỪ ĐÃ HỌC','book')}${stat(s.streak,'NGÀY LIÊN TIẾP','fire')}${stat(s.xp,'ĐIỂM KINH NGHIỆM','spark')}${stat(s.due,'TỪ ĐẾN LỊCH ÔN','review')}</div><div class="dashboard-grid"><section><div class="section-heading"><h2>Góc công cụ của bạn</h2><a class="text-link" href="#tools">Khám phá công cụ ↗</a></div><div class="tool-grid">${toolCard('tools','spark','Ghép prompt','Biến ý tưởng thành câu hỏi rõ ràng, hiệu quả.')}${toolCard('flashcards','cards','Flashcard','Lật thẻ, tự nhớ và lưu từ của riêng bạn.')}${toolCard('translate','translate','Dịch thuật','Hiểu từ và câu trong đúng ngữ cảnh.')}</div><div class="next-session">${icon('exercise')}<div><strong>Một chút thử thách, thêm chút tự tin.</strong><p>8 câu hỏi · Từ vựng & kỹ năng dùng AI</p></div><a class="button small" href="#exercises">Làm bài tập →</a></div></section><section class="card progress-card"><div class="section-heading"><h2>Nhịp học của bạn</h2><span class="pill green">7 ngày qua</span></div><p>Đều đặn một chút, mỗi ngày.</p><div class="goal-line"><span>Mục tiêu hôm nay</span><strong>${Math.min(s.today,user.goal)} / ${user.goal} câu đúng</strong></div><progress value="${Math.min(s.today,user.goal)}" max="${user.goal}" aria-label="Mục tiêu câu đúng hôm nay"></progress><div class="week-bars" aria-label="Điểm trong 7 ngày qua">${s.week.map(d=>`<div class="day-bar" title="${d.day}: ${d.xp} XP"><i style="height:${Math.max(6,Math.round(d.xp/Math.max(10,...s.week.map(x=>x.xp))*62))}px"></i>${new Date(d.day+'T12:00:00+07:00').toLocaleDateString('vi-VN',{weekday:'short'}).replace('Th ','T')}</div>`).join('')}</div><div class="daily-tip">${icon('spark')}Mỗi câu đúng mới là một bước tiến.</div></section></div>`;}
   function toolCard(route,i,title,text){return `<a class="tool-card" href="#${route}"><span class="tool-icon">${icon(i)}</span><span class="tool-arrow">${icon('diagonal')}</span><h3>${title}</h3><p>${text}</p></a>`;}
   function toolsPage(){return heading('Hỏi AI, rõ ràng hơn.','Ghép một prompt có mục tiêu. Giữ quyền chủ động trong cách bạn học.')+`<div class="template-row" aria-label="Mẫu prompt"><button class="template-chip" data-template="learn">✧ Học một từ mới</button><button class="template-chip" data-template="quiz">✎ Tạo bài luyện tập</button><button class="template-chip" data-template="check">✓ Kiểm tra câu đã viết</button></div><div class="two-columns"><form id="prompt-form" class="card"><div class="section-heading"><h2>Công thức prompt của bạn</h2><span class="pill green">5 thành phần</span></div><div class="form-grid"><label class="full-width">01 · Mục tiêu học tập<input name="goal" maxlength="180" required value="${esc(promptDraft.goal)}"></label><label>02 · Từ cần học<input name="word" maxlength="80" required value="${esc(promptDraft.word)}"></label><label>03 · Trình độ<select name="level">${['Lớp 11 · A2–B1','Cơ bản · A1–A2','Nâng cao · B1–B2'].map(x=>`<option ${promptDraft.level===x?'selected':''}>${x}</option>`).join('')}</select></label><label class="full-width">Ngữ cảnh hoặc câu bạn muốn kiểm tra<textarea name="context" rows="3" maxlength="500" required>${esc(promptDraft.context)}</textarea></label><label class="full-width">04 · Yêu cầu cụ thể<textarea name="request" rows="3" maxlength="600" required>${esc(promptDraft.request)}</textarea></label><label class="full-width">05 · Cách trình bày<select name="format">${['Theo từng mục ngắn','Bảng dễ so sánh','Từng bước, có ví dụ'].map(x=>`<option ${promptDraft.format===x?'selected':''}>${x}</option>`).join('')}</select></label></div></form><section class="card prompt-preview"><span class="mini-label">${icon('spark')} PROMPT ĐƯỢC GHÉP TRỰC TIẾP</span><div id="prompt-output" class="prompt-output"></div><div class="row wrap" style="margin-top:18px"><button class="button primary" data-action="copy-prompt">${icon('copy')} Sao chép prompt</button><button class="button" data-action="prompt-to-ai">Dùng với Agen AI ↗</button></div><ul class="tips-list"><li>${icon('check')}Có câu gốc giúp AI hiểu đúng nghĩa.</li><li>${icon('check')}Tự trả lời trước khi xem lời giải.</li><li>${icon('check')}Đối chiếu thông tin quan trọng với từ điển.</li></ul></section></div>`;}
   function updatePrompt(){const form=$('prompt-form');if(!form)return;promptDraft=Object.fromEntries(new FormData(form));$('prompt-output').textContent=`Bạn là gia sư tiếng Anh. Trình độ của tôi: ${promptDraft.level}.\n\nMục tiêu: ${promptDraft.goal}.\nTừ cần học: ${promptDraft.word}.\nNgữ cảnh: ${promptDraft.context}\n\n${promptDraft.request}\n\nTrình bày: ${promptDraft.format}. Nếu chưa chắc, hãy nói rõ; không tự bịa thông tin. Hướng dẫn tôi tự suy nghĩ thay vì làm hộ.`;}
@@ -201,7 +261,7 @@
     button.disabled=false;button.dataset.action='next-question';button.textContent=r.next?'Câu tiếp theo →':'Xem kết quả';
   }
   function translationPage(){return heading('Hiểu nghĩa. Nắm ngữ cảnh.','Dịch hai chiều Anh – Việt, rồi đối chiếu cách dùng của từ.')+`<form id="translate-form"><div class="two-columns equal"><section class="card translation-card"><div class="translation-header"><label for="translation-direction" class="muted">Ngôn ngữ gốc</label><select id="translation-direction" name="direction"><option value="en-vi">Tiếng Anh → Tiếng Việt</option><option value="vi-en">Tiếng Việt → Tiếng Anh</option></select></div><textarea id="translation-source" name="source" rows="7" maxlength="600" required aria-label="Nội dung cần dịch" placeholder="Ví dụ: Small steps lead to meaningful progress."></textarea><div class="translation-foot"><span id="translation-count">0 / 600 ký tự</span><button class="button primary small" type="submit">Dịch văn bản ${icon('arrow')}</button></div></section><section class="card translation-card translation-output"><div class="translation-header"><strong>Bản dịch</strong><span class="pill green">Đọc để hiểu</span></div><textarea id="translation-result" rows="7" readonly aria-label="Bản dịch" placeholder="Bản dịch sẽ xuất hiện ở đây…"></textarea><div class="translation-foot"><span id="translation-provider">Anh ↔ Việt</span><button class="button small" type="button" data-action="copy-translation" id="copy-translation" disabled>${icon('copy')} Sao chép</button></div></section></div><p id="translation-status" role="status" class="form-status"></p><p class="privacy-note">Khi bấm Dịch, nội dung được gửi tới Google; nếu dịch vụ không phản hồi, website thử MyMemory. Tránh gửi thông tin cá nhân. Bản dịch tự động cần được kiểm tra theo ngữ cảnh.</p><a class="text-link" href="https://www.oxfordlearnersdictionaries.com/" target="_blank" rel="noopener noreferrer">Đối chiếu từ với Oxford Learner’s Dictionaries ↗</a></form>`;}
-  function rankPage(data){return heading('Xếp hạng trên máy.','So sánh tiến độ giữa các hồ sơ trong trình duyệt này, không phải bảng xếp hạng trực tuyến.',`<span class="pill green">${data.myRank?'Hạng của bạn: #'+data.myRank:'Học theo nhịp của mình'}</span>`)+`<div class="two-columns"><section class="card"><div class="section-heading"><h2>Bảng xếp hạng</h2><div class="segmented"><button data-rank-period="week" aria-pressed="${rankPeriod==='week'}">7 ngày</button><button data-rank-period="all" aria-pressed="${rankPeriod==='all'}">Tất cả</button></div></div>${data.rows.length?`<table class="leaderboard-table"><thead><tr><th>HẠNG</th><th>NGƯỜI HỌC</th><th>XP</th></tr></thead><tbody>${data.rows.map(r=>`<tr class="${r.me?'me':''}"><td class="rank-number">${r.rank<=3?'✧ ':''}${r.rank}</td><td><span class="rank-avatar">${esc(r.name.slice(0,2).toUpperCase())}</span>${esc(r.name)} ${r.me?'<span class="pill green">Bạn</span>':''}</td><td><strong>${r.xp}</strong></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><h2>Chưa có thứ hạng.</h2><p>Người học tham gia và có điểm sẽ xuất hiện ở đây. Bạn có thể là người đầu tiên.</p></div>'}</section><aside><div class="card" style="margin-bottom:20px"><h2>Chọn cách bạn tham gia</h2><p class="subtext">Chỉ tên hiển thị và điểm của các hồ sơ trên máy này được đưa lên bảng.</p><label class="check-label"><input id="rank-opt-in" type="checkbox" ${user.publicRank?'checked':''}><span>Hiển thị tôi trên bảng xếp hạng</span></label><p class="privacy-note">Bạn luôn học và tích điểm được khi tắt tùy chọn này.</p><a class="button primary full" href="#exercises">Luyện tập để tiến bộ ${icon('arrow')}</a></div><div class="leaderboard-rules"><h3>Điểm đến từ nỗ lực thật</h3><ul><li>+10 XP cho mỗi câu đúng mới trong ngày.</li><li>Câu làm lại không cộng điểm trùng.</li><li>Tự đánh giá flashcard không cộng XP.</li><li>Bảng 7 ngày dùng múi giờ Việt Nam.</li></ul><p>Điểm lưu trên máy nhằm tạo động lực tự học, không dùng để chứng nhận hay thi đua trực tuyến.</p></div></aside></div>`;}
+  function rankPage(data){return heading(user.demo?'Xếp hạng học thử.':'Xếp hạng trên máy.',user.demo?'Điểm và thứ hạng minh họa của 10 tài khoản khách trong tuần học mẫu.':'So sánh tiến độ giữa các hồ sơ trong trình duyệt này, không phải bảng xếp hạng trực tuyến.',`<span class="pill green">${data.myRank?'Hạng của bạn: #'+data.myRank:'Học theo nhịp của mình'}</span>`)+`<div class="two-columns"><section class="card"><div class="section-heading"><h2>Bảng xếp hạng</h2><div class="segmented"><button data-rank-period="week" aria-pressed="${rankPeriod==='week'}">7 ngày</button><button data-rank-period="all" aria-pressed="${rankPeriod==='all'}">Tất cả</button></div></div>${data.rows.length?`<table class="leaderboard-table"><thead><tr><th>HẠNG</th><th>NGƯỜI HỌC</th><th>XP</th></tr></thead><tbody>${data.rows.map(r=>`<tr class="${r.me?'me':''}"><td class="rank-number">${r.rank<=3?'✧ ':''}${r.rank}</td><td><span class="rank-avatar">${esc(r.name.slice(0,2).toUpperCase())}</span>${esc(r.name)} ${r.me?'<span class="pill green">Bạn</span>':''}</td><td><strong>${r.xp}</strong></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><h2>Chưa có thứ hạng.</h2><p>Người học tham gia và có điểm sẽ xuất hiện ở đây. Bạn có thể là người đầu tiên.</p></div>'}</section><aside>${user.demo?`<div class="card demo-ranking-panel"><h2>Tiến độ từng hồ sơ</h2><p class="subtext">Xem số từ đã học, số ngày có luyện tập và điểm của từng tài khoản khách.</p><button class="button primary full" type="button" data-action="open-demo" aria-haspopup="dialog" aria-controls="demo-dialog">Chọn hồ sơ mẫu ${icon('arrow')}</button></div>`:''}<div class="card" style="margin-bottom:20px" ${user.demo?'hidden':''}><h2>Chọn cách bạn tham gia</h2><p class="subtext">Chỉ tên hiển thị và điểm của các hồ sơ trên máy này được đưa lên bảng.</p><label class="check-label"><input id="rank-opt-in" type="checkbox" ${user.publicRank?'checked':''}><span>Hiển thị tôi trên bảng xếp hạng</span></label><p class="privacy-note">Bạn luôn học và tích điểm được khi tắt tùy chọn này.</p><a class="button primary full" href="#exercises">Luyện tập để tiến bộ ${icon('arrow')}</a></div><div class="leaderboard-rules"><h3>${user.demo?'Điểm được tính như thế nào?':'Điểm đến từ nỗ lực thật'}</h3><ul><li>+10 XP cho mỗi câu đúng mới trong ngày.</li><li>Câu làm lại không cộng điểm trùng.</li><li>Tự đánh giá flashcard không cộng XP.</li><li>Bảng 7 ngày dùng múi giờ Việt Nam.</li></ul><p>Điểm lưu trên máy nhằm tạo động lực tự học, không dùng để chứng nhận hay thi đua trực tuyến.</p></div></aside></div>`;}
   function aiPage(){
     const setup=localTutor?`<section id="ai-setup" class="notice ai-setup">
       <strong id="ai-mode-label">Đám mây · Gemma 4</strong>
@@ -348,12 +408,14 @@
     const log=$('chat-log');
     log.scrollTop=log.scrollHeight;
   }
-  function accountPage(){return heading('Không gian mang tên bạn.','Điều chỉnh một mục tiêu vừa sức, rồi kiên trì với nó.')+`<div class="two-columns account-grid"><form id="profile-form" class="card"><h2>Hồ sơ học tập</h2><label>Tên hiển thị<input name="name" value="${esc(user.name)}" required minlength="2" maxlength="32"></label><label>${user.socialProvider?'Phương thức đăng nhập':'Tên đăng nhập'}<input value="${esc(socialLabels[user.socialProvider]||user.username)}" readonly aria-readonly="true"></label><label>Mục tiêu mỗi ngày<select name="goal">${[5,10,15].map(n=>`<option value="${n}" ${user.goal===n?'selected':''}>${n} câu trả lời đúng mới</option>`).join('')}</select></label><label>Hiệu ứng chuyển động<select id="motion-mode" name="motion">${[["system","Theo cài đặt hệ thống"],["full","Bật đầy đủ hiệu ứng"],["reduced","Giảm chuyển động"]].map(([v,t])=>`<option value="${v}" ${window.studyMotion?.preference()===v?"selected":""}>${t}</option>`).join("")}</select></label><p class="privacy-note">Tùy chọn chuyển động áp dụng riêng cho trình duyệt này.</p><p id="profile-status" class="form-status" role="status"></p><button class="button primary full">Lưu thay đổi</button></form><div class="card"><h2>Hành trình của bạn</h2><p class="subtext">Tiến độ, từ cá nhân và lịch ôn được lưu trong trình duyệt này. Không tự đồng bộ sang máy khác. Xóa dữ liệu website sẽ xóa hồ sơ.</p><button class="button full" data-action="guide-replay">${icon('book')} Đọc lại sách hướng dẫn</button><button class="button full" data-action="intro-replay" style="margin-top:12px">${icon('spark')} Xem lại intro</button><hr style="border:0;border-top:1px solid var(--line);margin:27px 0"><button class="button full danger" data-action="logout">Đăng xuất</button></div></div>`;}
+  function accountPage(){return heading('Không gian mang tên bạn.','Điều chỉnh một mục tiêu vừa sức, rồi kiên trì với nó.')+`<div class="two-columns account-grid"><form id="profile-form" class="card"><h2>Hồ sơ học tập</h2><label>Tên hiển thị<input name="name" value="${esc(user.name)}" required minlength="2" maxlength="32"></label><label>${user.socialProvider?'Phương thức đăng nhập':'Tên đăng nhập'}<input value="${esc(socialLabels[user.socialProvider]||user.username)}" readonly aria-readonly="true"></label><label>Mục tiêu mỗi ngày<select name="goal">${[5,10,15].map(n=>`<option value="${n}" ${user.goal===n?'selected':''}>${n} câu trả lời đúng mới</option>`).join('')}</select></label><label>Hiệu ứng chuyển động<select id="motion-mode" name="motion">${[["system","Theo cài đặt hệ thống"],["full","Bật đầy đủ hiệu ứng"],["reduced","Giảm chuyển động"]].map(([v,t])=>`<option value="${v}" ${window.studyMotion?.preference()===v?"selected":""}>${t}</option>`).join("")}</select></label><p class="privacy-note">Tùy chọn chuyển động áp dụng riêng cho trình duyệt này.</p><p id="profile-status" class="form-status" role="status"></p><button class="button primary full">Lưu thay đổi</button></form><div class="card"><h2>Hành trình của bạn</h2><p class="subtext">Tiến độ, từ cá nhân và lịch ôn được lưu trong trình duyệt này. Không tự đồng bộ sang máy khác. Xóa dữ liệu website sẽ xóa hồ sơ.</p><button class="button full" data-action="guide-replay">${icon('book')} Đọc lại sách hướng dẫn</button><button class="button full" data-action="intro-replay" style="margin-top:12px">${icon('spark')} Xem lại intro</button><hr style="border:0;border-top:1px solid var(--line);margin:27px 0"><button class="button full danger" data-action="logout">${user.demo?'Thoát chế độ thuyết trình':'Đăng xuất'}</button></div></div>`;}
 
   document.addEventListener('click',async event=>{
     if(event.target.closest('#mobile-more a'))$('mobile-more').close();
+    if(event.target.closest('#demo-actions a'))$('demo-dialog').close();
     const b=event.target.closest('button,[data-route]');if(!b||b.disabled)return;
     try{
+      if(b.dataset.demoProfile)return enterDemo(b.dataset.demoProfile);
       if(b.dataset.socialProvider){
         if(authBusy)return;
         authBusy=true;
@@ -415,8 +477,10 @@
       if(action==='toggle-password'){const field=$('auth-password');const show=field.type==='password';field.type=show?'text':'password';b.textContent=show?'Ẩn':'Hiện';b.setAttribute('aria-label',show?'Ẩn mật khẩu':'Hiện mật khẩu');b.setAttribute('aria-pressed',String(show));}
       if(action==='login-tab')showAuth(false);
       if(action==='register-tab')showAuth(true);
+      if(action==='open-demo')await openDemo();
+      if(action==='close-demo')$('demo-dialog').close();
       if(action==='retry')renderRoute();
-      if(action==='logout'){b.disabled=true;await api('logout',{});user=null;resetChat();attempt=null;words=[];promptDraft.context='';deckFilter='all';search='';flashIndex=0;openStudyCard=null;introChoice='';$('card-dialog').close();history.replaceState(null,'',location.pathname);showAuth();}
+      if(action==='logout'){if(demoBusy)return;b.disabled=true;await api('logout',{});user=null;clearProfileView();b.disabled=false;history.replaceState(null,'',location.pathname);showAuth();if(b.closest('#demo-dialog'))$('auth-screen').querySelector('[data-action="open-demo"]')?.focus();}
       if(action==='intro-back'){introStep--;showIntro();}
       if(action==='intro-next'){if(introStep<3){introStep++;showIntro();}else{b.disabled=true;user=(await api('profile',{intro:true})).user;guideReplay=user.guide>=4;guideStep=-1;showGuide();}}
       if(action==='intro-replay'){introStep=0;showIntro();}
