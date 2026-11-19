@@ -1,6 +1,6 @@
 import {browserLocalAPI} from './local-api.mjs?v=4';
 import {browserTutor} from './may-ai.mjs?v=6';
-import {browserSocialAuth} from './social-auth.mjs?v=1';
+import {browserSocialAuth} from './social-auth.mjs?v=2';
 window.studySocial=browserSocialAuth();
 window.studyAI=browserTutor();
 window.studyLocal=browserLocalAPI(()=>window.studySocial?.identity());

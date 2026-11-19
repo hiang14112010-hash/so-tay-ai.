@@ -8,4 +8,4 @@ export const firebaseConfig = {
   "appId": "1:1002568070672:web:76961f0753c96f98ecfc95",
   "measurementId": "G-9H1HW3HN4X"
 };
-export const enabledProviders = [];
+export const enabledProviders = ['google'];
