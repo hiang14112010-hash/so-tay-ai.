@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Tạo tài khoản kiểm thử · Sổ tay AI</title>
+  <title>Tạo hồ sơ mẫu · Sổ tay AI</title>
   <link rel="icon" href="book.png" type="image/png">
-  <link rel="stylesheet" href="app.css?v=14">
+  <link rel="stylesheet" href="app.css?v=15">
   <style>
     .test-setup { max-width: 640px; margin: 0 auto; padding: clamp(16px, 4vw, 36px); }
     .test-setup > .brand { display: inline-flex; margin: 0 0 20px; }
@@ -19,9 +19,9 @@
   <main class="test-setup">
     <a class="brand" href="./"><img class="brand-mark" src="book.png" alt=""><span>Sổ tay <b>AI</b></span></a>
     <section class="card">
-      <h1>Tạo 10 tài khoản kiểm thử</h1>
+      <h1>Tạo 10 hồ sơ mẫu</h1>
       <p>Tạo hồ sơ trong hệ thống đăng nhập thường của Sổ tay AI trên trình duyệt này. Mỗi hồ sơ có điểm XP và tiến độ học mô phỏng trong 7 ngày.</p>
-      <button id="install" class="button primary" type="button">Tạo tài khoản kiểm thử</button>
+      <button id="install" class="button primary" type="button">Tạo hồ sơ mẫu</button>
       <p id="status" class="subtext" role="status"></p>
       <div id="results" hidden>
         <p>Mật khẩu chung của 10 tài khoản là <code id="password"></code>.</p>
@@ -29,19 +29,19 @@
           <thead><tr><th scope="col">Tên hiển thị</th><th scope="col">Tên đăng nhập</th></tr></thead>
           <tbody id="profiles"></tbody>
         </table>
-        <p>Nếu đang đăng nhập, hãy đăng xuất rồi dùng một tên đăng nhập ở trên. Bảng xếp hạng hiển thị các hồ sơ này với nhãn <strong>Kiểm thử</strong>.</p>
-        <a class="button" href="./">Mở Sổ tay AI</a>
+        <p>Cả 10 hồ sơ tự xuất hiện trên bảng xếp hạng của trình duyệt này. Bạn có thể xem bằng tài khoản hiện tại hoặc đăng nhập bằng một trong các hồ sơ ở trên.</p>
+        <a class="button" href="./#leaderboard">Mở bảng xếp hạng</a>
       </div>
     </section>
   </main>
   <script type="module">
-    import {browserLocalAPI} from './local-api.mjs?v=6';
+    import {browserLocalAPI} from './local-api.mjs?v=7';
     const api=browserLocalAPI();
     const install=document.getElementById('install');
     const status=document.getElementById('status');
     install.addEventListener('click',async()=>{
       install.disabled=true;
-      status.textContent='Đang chuẩn bị hồ sơ kiểm thử…';
+      status.textContent='Đang chuẩn bị hồ sơ mẫu…';
       try{
         const {profiles,password,added}=await api.request('install-test-accounts',{});
         document.getElementById('password').textContent=password;
@@ -52,7 +52,7 @@
           row.insertCell().textContent=username;
         }
         document.getElementById('results').hidden=false;
-        status.textContent=added?'Đã tạo '+added+' tài khoản kiểm thử.':'Trình duyệt này đã có đủ 10 tài khoản kiểm thử.';
+        status.textContent=added?'Đã tạo '+added+' hồ sơ mẫu.':'Trình duyệt này đã có đủ 10 hồ sơ mẫu.';
         install.hidden=true;
       }catch(error){
         status.textContent=error.message;

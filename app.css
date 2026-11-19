@@ -514,12 +514,3 @@ html[data-motion="reduced"] #agen-pet[data-mood]{animation:none}
 .auth-social .button{min-height:44px}
 .auth-social .form-status{margin:0}
 .auth-social .form-status:empty{display:none}
-.test-account-label{
-  display:inline-block;
-  padding:1px 6px;
-  border-radius:5px;
-  background:var(--sage);
-  color:var(--forest);
-  font-size:11px;
-  white-space:nowrap;
-}

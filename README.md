@@ -8,7 +8,7 @@ Bản này chạy hoàn toàn trong trình duyệt. Hồ sơ, mật khẩu đã 
 
 Bảng xếp hạng chỉ so sánh các hồ sơ trên cùng trình duyệt. Chấm điểm chạy ở phía trình duyệt nên chỉ phù hợp tự học.
 
-Trang `tao-tai-khoan-kiem-thu.html` tạo 10 hồ sơ đăng nhập thử với dữ liệu học mô phỏng trong 7 ngày khi người dùng bấm nút tạo. Hồ sơ có nhãn Kiểm thử trên bảng xếp hạng và chỉ xuất hiện trong trình duyệt đã tạo.
+Trang `tao-tai-khoan-kiem-thu.html` tạo 10 hồ sơ đăng nhập thử với dữ liệu học mô phỏng trong 7 ngày khi người dùng bấm nút tạo. Cả 10 hồ sơ xuất hiện trên bảng xếp hạng của trình duyệt đã tạo, cùng một ghi chú chung về nguồn dữ liệu mô phỏng.
 
 Agen AI mặc định chạy Gemma 4 qua Cloudflare Workers AI. Khi gửi, trình duyệt chuyển câu hỏi và tối đa bốn lượt hỏi đáp gần nhất tới Worker. Lịch sử lưu theo hồ sơ bằng IndexedDB. Khi bật Tìm trên web, trình duyệt gửi từ khóa của câu hỏi tới Wikimedia để tìm nguồn.
 

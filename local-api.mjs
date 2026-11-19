@@ -85,7 +85,7 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
       const goal=b.goal??user.goal,guide=b.guide??user.guide;
       if(![5,10,15].includes(goal)||!Number.isInteger(guide)||guide<0||guide>4||(b.publicRank!==undefined&&typeof b.publicRank!=='boolean')||(b.intro!==undefined&&typeof b.intro!=='boolean'))throw fail('Cài đặt không hợp lệ.');
       if(b.name!==undefined)user.name=field(b.name,2,32,'Tên hiển thị');
-      user.goal=goal;user.guide=Math.max(guide,user.guide);user.intro=!!(b.intro||user.intro);if(b.publicRank!==undefined)user.publicRank=b.publicRank;
+      user.goal=goal;user.guide=Math.max(guide,user.guide);user.intro=!!(b.intro||user.intro);if(b.publicRank!==undefined&&!user.testSlot)user.publicRank=b.publicRank;
       result={user:publicUser(user)};dirty=true;
     }else if(route==='conversations'&&verb==='GET'){
       return {conversations:(state.conversations??[]).filter(thread=>thread.userId===uid).sort((a,b)=>b.updated-a.updated)};
@@ -147,8 +147,14 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
       result={correct,correctIndex:q.correct,explanation:q.explanation,xp,score:a.score,earned:a.earned,total:a.questions.length,next:next(a)};dirty=true;
     }else if(route==='leaderboard'){
       const period=url.searchParams.get('period')==='all'?'all':'week',since=period==='all'?'0000-00-00':day(-6);
-      const rows=state.users.filter(u=>u.publicRank).map(u=>({id:u.id,name:u.name,created:u.created,testSlot:u.testSlot,xp:state.awards.filter(a=>a.userId===u.id&&a.day>=since).reduce((n,a)=>n+a.xp,0)})).filter(u=>u.xp>0).sort((a,b)=>b.xp-a.xp||a.created-b.created);
-      return {rows:rows.slice(0,50).map((r,i)=>({name:r.name,xp:r.xp,rank:i+1,me:r.id===uid,...(r.testSlot?{testAccount:true}:{})})),myRank:rows.findIndex(r=>r.id===uid)+1||null,participating:user.publicRank,period,local:true};
+      const rows=state.users.filter(u=>u.publicRank||u.testSlot).map(u=>({
+        id:u.id,name:u.name,created:u.created,testSlot:u.testSlot,
+        xp:state.awards.filter(a=>a.userId===u.id&&a.day>=since).reduce((sum,a)=>sum+a.xp,0)
+      })).filter(u=>u.xp>0||u.testSlot).sort((a,b)=>b.xp-a.xp||a.created-b.created);
+      const visibleRows=rows.map((r,i)=>({
+        name:r.name,xp:r.xp,rank:i+1,me:r.id===uid,...(r.testSlot?{testAccount:true}:{})
+      })).filter(r=>r.rank<=50||r.testAccount);
+      return {rows:visibleRows,myRank:rows.findIndex(r=>r.id===uid)+1||null,participating:!!(user.publicRank||user.testSlot),period,local:true};
     }else if(route==='ai')throw fail('Bản GitHub Pages chưa kết nối AI. Dùng công cụ ghép prompt với AI của bạn.',503);
     else throw fail('Không tìm thấy chức năng này.',404);
     if(dirty)await write(state);return result;
