@@ -1,4 +1,4 @@
-import { firebaseConfig, enabledProviders } from './social-auth-config.mjs';
+import { firebaseConfig, enabledProviders } from './social-auth-config.mjs?v=1';
 
 const sdkURL = 'https://www.gstatic.com/firebasejs/13.4.0/';
 const allowedProviders = ['google', 'facebook'];
