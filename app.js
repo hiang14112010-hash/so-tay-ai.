@@ -9,9 +9,13 @@
   let grading=false,flipping=false,guideBusy=false;
   let user=null,aiConfigured=false,currentRoute='home',routeVersion=0,screen='boot',introStep=0,introChoice='',guideStep=-1,guideReplay=false,words=[],flashIndex=0,flipped=false,deckFilter='all',search='',attempt=null,selectedAnswer=null,answerResult=null,rankPeriod='week',chat=[],chatDraft='',toastTimer,translationController;
   const localTutor=window.studyAI;
-  const canChat=()=>localTutor?localTutor.state==='ready'&&!localTutor.busy:aiConfigured;
+  let chatThreads=[],chatSelection,chatJob=null,deletingChat=false;
+  const canChat=()=>!chatJob&&!deletingChat&&(localTutor?localTutor.state==='ready'&&!localTutor.busy:aiConfigured);
+  function resetChat(){
+    chat=[];chatDraft='';chatThreads=[];chatSelection=undefined;chatJob=null;deletingChat=false;
+  }
   let promptDraft={goal:'Hiểu và dùng từ theo ngữ cảnh',word:'sustainable',context:'Our school needs a sustainable way to reduce plastic waste.',level:'Lớp 11 · A2–B1',format:'Theo từng mục ngắn',request:'Giải thích nghĩa, từ loại và cho 2 ví dụ có bản dịch. Tạo 1 câu điền từ và chờ tôi trả lời trước khi đưa đáp án.'};
-  async function api(path,data,method){if(window.studyLocal){try{return await window.studyLocal.request(path,data,method);}catch(e){if(e.status===401&&user){user=null;chat=[];chatDraft='';attempt=null;words=[];showAuth();}throw e;}}const response=await fetch('/api/'+path,{method:method||(data?'POST':'GET'),headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined,credentials:'same-origin',signal:AbortSignal.timeout(path==='ai'?35000:15000)});const result=await response.json();if(!response.ok){if(response.status===401&&user){user=null;chat=[];chatDraft='';attempt=null;words=[];showAuth();}throw new Error(result.error||'Không thể hoàn thành yêu cầu.');}return result;}
+  async function api(path,data,method){if(window.studyLocal){try{return await window.studyLocal.request(path,data,method);}catch(e){if(e.status===401&&user){user=null;resetChat();attempt=null;words=[];showAuth();}throw e;}}const response=await fetch('/api/'+path,{method:method||(data?'POST':'GET'),headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined,credentials:'same-origin',signal:AbortSignal.timeout(path==='ai'?35000:15000)});const result=await response.json();if(!response.ok){if(response.status===401&&user){user=null;resetChat();attempt=null;words=[];showAuth();}throw new Error(result.error||'Không thể hoàn thành yêu cầu.');}return result;}
   function toast(message){clearTimeout(toastTimer);$('toast').textContent=message;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4000);}
   function showScreen(id){screen=id;for(const key of ['boot','auth-screen','intro-screen','guide-screen','app-shell'])$(key).hidden=key!==id;window.scrollTo(0,0);}
   function focusTitle(container){const title=container.querySelector('h1,h2');if(title){title.tabIndex=-1;title.focus({preventScroll:true});}}
@@ -112,11 +116,23 @@
   function enter(){if(!user)return showAuth();if(!user.intro){introStep=0;return showIntro();}if(user.guide<4){guideReplay=false;guideStep=user.guide===0?-1:user.guide;return showGuide();}showScreen('app-shell');$('profile-button').textContent=user.name.slice(0,2).toUpperCase();renderRoute();}
   function navigate(route){if(location.hash==='#'+route)renderRoute();else location.hash=route;}
   async function renderRoute(){if(!user||screen!=='app-shell')return;const version=++routeVersion;translationController?.abort();currentRoute=location.hash.slice(1)||'home';if(![...nav.map(x=>x[0]),'account'].includes(currentRoute))currentRoute='home';$('route-label').textContent=nav.find(x=>x[0]===currentRoute)?.[1]||'Tài khoản';document.title=$('route-label').textContent+' · Sổ tay AI';$('main-nav').innerHTML=nav.map(([id,label,i])=>`${id==='leaderboard'?'<div class="nav-separator"></div>':''}<a href="#${id}" class="nav-item ${currentRoute===id?'active':''}" ${currentRoute===id?'aria-current="page"':''} aria-label="${label}">${icon(i)}<span>${label}</span>${id==='ai'?'<span class="nav-mini">RIÊNG</span>':''}</a>`).join('');$('main-content').innerHTML='<div class="loading" role="status">Đang mở trang…</div>';
-    try{let html='';if(currentRoute==='home'){const [stats,data]=await Promise.all([api('dashboard'),api('words')]);words=data.words;html=home(stats);}else if(currentRoute==='tools')html=toolsPage();else if(currentRoute==='exercises')html=exercisePage();else if(currentRoute==='flashcards'||currentRoute==='review'){words=(await api('words')).words;html=currentRoute==='flashcards'?flashPage():reviewPage();}else if(currentRoute==='translate')html=translationPage();else if(currentRoute==='leaderboard')html=rankPage(await api('leaderboard?period='+rankPeriod));else if(currentRoute==='ai')html=aiPage();else html=accountPage();if(version!==routeVersion||screen!=='app-shell')return;$('main-content').innerHTML=html;$('main-content').classList.remove('route-enter');void $('main-content').offsetWidth;$('main-content').classList.add('route-enter');if(currentRoute==='tools')updatePrompt();if(currentRoute==='flashcards')renderFlash();if(currentRoute==='ai'){
+    try{let html='';if(currentRoute==='home'){const [stats,data]=await Promise.all([api('dashboard'),api('words')]);words=data.words;html=home(stats);}else if(currentRoute==='tools')html=toolsPage();else if(currentRoute==='exercises')html=exercisePage();else if(currentRoute==='flashcards'||currentRoute==='review'){words=(await api('words')).words;html=currentRoute==='flashcards'?flashPage():reviewPage();}else if(currentRoute==='translate')html=translationPage();else if(currentRoute==='leaderboard')html=rankPage(await api('leaderboard?period='+rankPeriod));else if(currentRoute==='ai'){
+      if(localTutor){
+        const {conversations}=await api('conversations');
+        if(version!==routeVersion||screen!=='app-shell')return;
+        chatThreads=conversations;
+        if(!chatJob){
+          const thread=chatSelection===undefined?chatThreads[0]:chatThreads.find(item=>item.id===chatSelection);
+          selectChat(thread);
+        }
+      }
+      html=aiPage();
+    }else html=accountPage();if(version!==routeVersion||screen!=='app-shell')return;$('main-content').innerHTML=html;$('main-content').classList.remove('route-enter');void $('main-content').offsetWidth;$('main-content').classList.add('route-enter');if(currentRoute==='tools')updatePrompt();if(currentRoute==='flashcards')renderFlash();if(currentRoute==='ai'){
       $('chat-input').value=chatDraft;
       chatDraft='';
       syncTutor();
       renderChat();
+      renderChatHistory();
     }restoreQuizState();window.scrollTo(0,0);$('main-content').focus({preventScroll:true});}catch(e){if(version===routeVersion&&screen==='app-shell')$('main-content').innerHTML=`<div class="error-card" role="alert">${esc(e.message)} <button class="button small" data-action="retry">Thử lại</button></div>`;}
   }
   function home(s){const date=new Date().toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',weekday:'long',day:'numeric',month:'long'});const w=words[(Math.floor(Date.now()/86400000))%40];const stat=(n,label,i)=>`<div class="stat"><span class="stat-icon">${icon(i)}</span><div><strong>${n}</strong><small>${label}</small></div></div>`;return heading(`Chào ${esc(user.name)} <span class="greeting-mark">✳</span>`,'Một ngày mới, một cơ hội để tiến bộ. Hôm nay mình học gì nhỉ?',`<span class="heading-date">${date}</span>`)+`<div class="dashboard-grid"><section class="card hero"><p class="eyebrow">HỌC CÓ CHỦ ĐÍCH · NHỚ CÓ PHƯƠNG PHÁP</p><h2>Mỗi từ mới,<br>mở thêm một thế giới.</h2><p>Bắt đầu từ một bộ thẻ nhỏ. Hiểu thật rõ, luyện thật đều, để kiến thức ở lại lâu hơn.</p><a class="button lime" href="#${s.due?'review':'flashcards'}">${s.due?'Ôn '+s.due+' từ đến hạn':'Bắt đầu học hôm nay'} ${icon('arrow')}</a><div class="hero-art" aria-hidden="true"><img class="hero-book" src="book.png" alt=""><span class="hero-spark">✧</span></div></section><section class="card daily-word"><p class="eyebrow">MỘT TỪ HAY CHO HÔM NAY</p><div class="word-heading"><h2 lang="en">${esc(w.word)}</h2><button class="icon-button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm ${esc(w.word)}">${icon('volume')}</button></div><span class="word-pos">${esc(w.pos)}</span><p class="meaning">${esc(w.meaning)}</p><p class="sentence" lang="en">“${esc(w.example)}”</p><button class="text-link" data-open-word="${w.id}">Khám phá trong Flashcard ↗</button></section></div><div class="stats-row">${stat(s.learned,'TỪ ĐÃ HỌC','book')}${stat(s.streak,'NGÀY LIÊN TIẾP','fire')}${stat(s.xp,'ĐIỂM KINH NGHIỆM','spark')}${stat(s.due,'TỪ ĐẾN LỊCH ÔN','review')}</div><div class="dashboard-grid"><section><div class="section-heading"><h2>Góc công cụ của bạn</h2><a class="text-link" href="#tools">Khám phá công cụ ↗</a></div><div class="tool-grid">${toolCard('tools','spark','Ghép prompt','Biến ý tưởng thành câu hỏi rõ ràng, hiệu quả.')}${toolCard('flashcards','cards','Flashcard','Lật thẻ, tự nhớ và lưu từ của riêng bạn.')}${toolCard('translate','translate','Dịch thuật','Hiểu từ và câu trong đúng ngữ cảnh.')}</div><div class="next-session">${icon('exercise')}<div><strong>Một chút thử thách, thêm chút tự tin.</strong><p>8 câu hỏi · Từ vựng & kỹ năng dùng AI</p></div><a class="button small" href="#exercises">Làm bài tập →</a></div></section><section class="card progress-card"><div class="section-heading"><h2>Nhịp học của bạn</h2><span class="pill green">7 ngày qua</span></div><p>Đều đặn một chút, mỗi ngày.</p><div class="goal-line"><span>Mục tiêu hôm nay</span><strong>${Math.min(s.today,user.goal)} / ${user.goal} câu đúng</strong></div><progress value="${Math.min(s.today,user.goal)}" max="${user.goal}" aria-label="Mục tiêu câu đúng hôm nay"></progress><div class="week-bars" aria-label="Điểm trong 7 ngày qua">${s.week.map(d=>`<div class="day-bar" title="${d.day}: ${d.xp} XP"><i style="height:${Math.max(6,Math.round(d.xp/Math.max(10,...s.week.map(x=>x.xp))*62))}px"></i>${new Date(d.day+'T12:00:00+07:00').toLocaleDateString('vi-VN',{weekday:'short'}).replace('Th ','T')}</div>`).join('')}</div><div class="daily-tip">${icon('spark')}Mỗi câu đúng mới là một bước tiến.</div></section></div>`;}
@@ -148,24 +164,65 @@
       <p id="ai-detail" role="status"></p>
     </section>`:aiConfigured?'':'<div class="notice">Mây AI đang chờ kết nối. <a href="#tools">Ghép và sao chép prompt</a></div>';
     const disabled=canChat()?'':'disabled';
-    const privacy=localTutor?'Tin nhắn được xử lý trên thiết bị của bạn.':'Tin nhắn được gửi tới nhà cung cấp AI khi bạn bấm Gửi.';
-    return heading('Mây AI, bạn học của bạn.','Hỏi nghĩa một từ, luyện đặt câu hoặc kiểm tra điều bạn chưa chắc.')+`<div class="chat-panel">
-      <div class="ai-welcome"><div class="orb" aria-hidden="true"></div><h2>Hôm nay, mình cùng học gì?</h2></div>
-      ${setup}
-      <div class="ai-prompts"><button data-ai-prompt="Giải thích sustainable trong cụm a sustainable study routine cho học sinh lớp 11.">✧ Giải thích một từ theo ngữ cảnh</button><button data-ai-prompt="Hãy giúp tôi luyện đặt câu với contribute. Cho gợi ý, chờ tôi viết rồi mới góp ý.">✎ Luyện đặt câu, từng bước một</button></div>
-      <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Cuộc trò chuyện"></div>
-      <form id="chat-form" class="chat-compose">
-        <textarea id="chat-input" name="message" rows="2" maxlength="2000" required aria-label="Tin nhắn cho Mây AI" placeholder="Nhập điều bạn muốn học…" ${!localTutor&&!aiConfigured?'disabled':''}></textarea>
-        <button class="button primary" type="submit" ${disabled} aria-label="Gửi tin nhắn">${icon('arrow')}</button>
-      </form>
-      <p id="chat-status" class="form-status" role="status"></p>
-      <p class="privacy-note">${privacy} Cuộc trò chuyện sẽ mất khi tải lại trang. Hãy kiểm chứng câu trả lời.</p>
+    const history=localTutor?`<aside class="chat-history">
+      <details open><summary>Lịch sử trò chuyện</summary>
+        <div class="row">
+          <button class="button small" type="button" data-action="chat-new">Cuộc trò chuyện mới</button>
+          <button class="text-link" type="button" data-action="chat-delete" hidden>Xóa</button>
+        </div>
+        <div id="chat-history-list"></div>
+      </details>
+    </aside>`:'';
+    const search=localTutor?`<label class="check-label chat-search"><input name="web" type="checkbox">
+      <span><strong>Tìm trên web</strong><small>Khi bật, web gửi từ khóa từ câu hỏi tới Wikimedia.</small></span>
+    </label>`:'';
+    const privacy=localTutor?'Lịch sử lưu theo hồ sơ trên trình duyệt này.':'Tin nhắn được gửi tới nhà cung cấp AI khi bạn bấm Gửi.';
+    return heading('Mây AI, bạn học của bạn.','Hỏi nghĩa một từ, luyện đặt câu hoặc kiểm tra điều bạn chưa chắc.')+`<div class="chat-layout ${localTutor?'with-history':''}">
+      ${history}
+      <div class="chat-panel">
+        <div class="ai-welcome"><div class="orb" aria-hidden="true"></div><h2>Hôm nay, mình cùng học gì?</h2></div>
+        ${setup}
+        <div class="ai-prompts"><button data-ai-prompt="Giải thích sustainable trong cụm a sustainable study routine cho học sinh lớp 11.">✧ Giải thích một từ theo ngữ cảnh</button><button data-ai-prompt="Hãy giúp tôi luyện đặt câu với contribute. Cho gợi ý, chờ tôi viết rồi mới góp ý.">✎ Luyện đặt câu, từng bước một</button></div>
+        <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Cuộc trò chuyện"></div>
+        <form id="chat-form">
+          ${search}
+          <div class="chat-compose">
+            <textarea id="chat-input" name="message" rows="2" maxlength="2000" required aria-label="Tin nhắn cho Mây AI" placeholder="Nhập điều bạn muốn học…" ${!localTutor&&!aiConfigured?'disabled':''}></textarea>
+            <button class="button primary" type="submit" ${disabled} aria-label="Gửi tin nhắn">${icon('arrow')}</button>
+          </div>
+        </form>
+        <p id="chat-status" class="form-status" role="status"></p>
+        <p class="privacy-note">${privacy} Hãy kiểm chứng câu trả lời.</p>
+      </div>
     </div>`;
+  }
+  function selectChat(thread){
+    chatSelection=thread?.id??null;
+    chat=thread?.messages.slice()??[];
+  }
+  function renderChatHistory(){
+    const list=$('chat-history-list');
+    if(!list)return;
+    list.innerHTML=chatThreads.length?chatThreads.map(thread=>`<button type="button" data-chat-id="${esc(thread.id)}"
+      aria-pressed="${thread.id===chatSelection}" ${chatJob||deletingChat?'disabled':''}>${esc(thread.title)}</button>`).join('')
+      :'<p class="muted">Chưa có cuộc trò chuyện nào.</p>';
+    const remove=document.querySelector('[data-action="chat-delete"]');
+    remove.hidden=!chatSelection;
+    remove.disabled=!!chatJob||deletingChat;
+    document.querySelector('[data-action="chat-new"]').disabled=!!chatJob||deletingChat;
+  }
+  function openChat(thread){
+    selectChat(thread);
+    renderChatHistory();
+    renderChat();
+    $('chat-input').value='';
+    $('chat-status').textContent='';
+    $('chat-input').focus();
   }
   function syncTutor(){
     const setup=$('ai-setup');
     if(!setup||!localTutor)return;
-    const {state,detail,progress,busy}=localTutor;
+    const {state,detail,progress}=localTutor;
     setup.hidden=state==='ready';
     const button=setup.querySelector('button');
     button.hidden=state==='unsupported';
@@ -179,11 +236,33 @@
     if(status.textContent!==detail)status.textContent=detail;
     $('chat-form').querySelector('button').disabled=!canChat();
     const chatStatus=$('chat-status');
-    if(busy)chatStatus.textContent='Mây đang suy nghĩ…';
-    else if(chatStatus.textContent==='Mây đang suy nghĩ…')chatStatus.textContent='';
+    if(chatJob)chatStatus.textContent=chatJob.status;
   }
   window.addEventListener('study-ai-state',syncTutor);
-  function renderChat(){if(!$('chat-log'))return;$('chat-log').innerHTML=chat.map(m=>`<div class="message ${m.role==='user'?'user':''}"><strong>${m.role==='user'?'Bạn':'Mây AI'}</strong>${esc(m.content)}</div>`).join('');$('chat-log').scrollTop=$('chat-log').scrollHeight;}
+  function renderChat(){
+    const log=$('chat-log');
+    if(!log)return;
+    log.innerHTML=chat.map(message=>{
+      const links=(message.sources||[]).map((source,index)=>`<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">[${index+1}] ${esc(source.title)}</a>`).join('');
+      const sources=links?`<div class="chat-sources"><strong>Nguồn tìm được</strong>${links}</div>`:'';
+      const note=message.note?`<small class="chat-source-note">${esc(message.note)}</small>`:'';
+      return `<div class="message ${message.role==='user'?'user':''}"><strong>${message.role==='user'?'Bạn':'Mây AI'}</strong>${esc(message.content)}${sources}${note}</div>`;
+    }).join('');
+    if(chatJob?.partial){
+      log.insertAdjacentHTML('beforeend','<div id="chat-partial" class="message" aria-hidden="true"><strong>Mây AI</strong><span></span></div>');
+      log.lastElementChild.lastElementChild.textContent=chatJob.partial;
+    }
+    log.scrollTop=log.scrollHeight;
+  }
+  function showChatChunk(job, text){
+    if(chatJob!==job)return;
+    job.partial=text;
+    const bubble=$('chat-partial');
+    if(!bubble){renderChat();return;}
+    bubble.lastElementChild.textContent=text;
+    const log=$('chat-log');
+    log.scrollTop=log.scrollHeight;
+  }
   function accountPage(){return heading('Không gian mang tên bạn.','Điều chỉnh một mục tiêu vừa sức, rồi kiên trì với nó.')+`<div class="two-columns account-grid"><form id="profile-form" class="card"><h2>Hồ sơ học tập</h2><label>Tên hiển thị<input name="name" value="${esc(user.name)}" required minlength="2" maxlength="32"></label><label>Tên đăng nhập<input value="${esc(user.username)}" readonly aria-readonly="true"></label><label>Mục tiêu mỗi ngày<select name="goal">${[5,10,15].map(n=>`<option value="${n}" ${user.goal===n?'selected':''}>${n} câu trả lời đúng mới</option>`).join('')}</select></label><label>Hiệu ứng chuyển động<select id="motion-mode" name="motion">${[["system","Theo cài đặt hệ thống"],["full","Bật đầy đủ hiệu ứng"],["reduced","Giảm chuyển động"]].map(([v,t])=>`<option value="${v}" ${window.studyMotion?.preference()===v?"selected":""}>${t}</option>`).join("")}</select></label><p class="privacy-note">Tùy chọn chuyển động áp dụng riêng cho trình duyệt này.</p><p id="profile-status" class="form-status" role="status"></p><button class="button primary full">Lưu thay đổi</button></form><div class="card"><h2>Hành trình của bạn</h2><p class="subtext">Tiến độ, từ cá nhân và lịch ôn được lưu trong trình duyệt này. Không tự đồng bộ sang máy khác. Xóa dữ liệu website sẽ xóa hồ sơ.</p><button class="button full" data-action="guide-replay">${icon('book')} Đọc lại sách hướng dẫn</button><button class="button full" data-action="intro-replay" style="margin-top:12px">${icon('spark')} Xem lại intro</button><hr style="border:0;border-top:1px solid var(--line);margin:27px 0"><button class="button full danger" data-action="logout">Đăng xuất</button></div></div>`;}
 
   document.addEventListener('click',async event=>{
@@ -202,12 +281,33 @@
       if(b.dataset.answer!==undefined){if(answerResult||grading)return;selectedAnswer=Number(b.dataset.answer);document.querySelectorAll('[data-answer]').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));$('grade-button').disabled=false;return;}
       if(b.dataset.rankPeriod){rankPeriod=b.dataset.rankPeriod;return renderRoute();}
       if(b.dataset.aiPrompt){if(!localTutor&&!aiConfigured){toast('Mây AI chưa được kết nối. Bạn có thể dùng Công cụ AI để ghép prompt.');return;}$('chat-input').value=b.dataset.aiPrompt;$('chat-input').focus();return;}
+      if(b.dataset.chatId){
+        if(!chatJob&&!deletingChat)openChat(chatThreads.find(thread=>thread.id===b.dataset.chatId));
+        return;
+      }
       const action=b.dataset.action;
+      if(action==='chat-new'&&!chatJob&&!deletingChat)openChat();
+      if(action==='chat-delete'&&!chatJob&&!deletingChat&&chatSelection&&confirm('Xóa cuộc trò chuyện này?')){
+        const id=chatSelection,owner=user.id;
+        deletingChat=true;
+        syncTutor();
+        renderChatHistory();
+        try{
+          await api('conversations',{id,userId:owner},'DELETE');
+          if(user?.id===owner){
+            chatThreads=chatThreads.filter(thread=>thread.id!==id);
+            if($('chat-input'))openChat(chatThreads[0]);
+            else selectChat(chatThreads[0]);
+          }
+        }finally{
+          if(user?.id===owner){deletingChat=false;syncTutor();renderChatHistory();}
+        }
+      }
       if(action==='toggle-password'){const field=$('auth-password');const show=field.type==='password';field.type=show?'text':'password';b.textContent=show?'Ẩn':'Hiện';b.setAttribute('aria-label',show?'Ẩn mật khẩu':'Hiện mật khẩu');b.setAttribute('aria-pressed',String(show));}
       if(action==='login-tab')showAuth(false);
       if(action==='register-tab')showAuth(true);
       if(action==='retry')renderRoute();
-      if(action==='logout'){b.disabled=true;await api('logout',{});user=null;chat=[];chatDraft='';attempt=null;words=[];promptDraft.context='';deckFilter='all';search='';flashIndex=0;introChoice='';$('card-dialog').close();history.replaceState(null,'',location.pathname);showAuth();}
+      if(action==='logout'){b.disabled=true;await api('logout',{});user=null;resetChat();attempt=null;words=[];promptDraft.context='';deckFilter='all';search='';flashIndex=0;introChoice='';$('card-dialog').close();history.replaceState(null,'',location.pathname);showAuth();}
       if(action==='intro-back'){introStep--;showIntro();}
       if(action==='intro-next'){if(introStep<3){introStep++;showIntro();}else{b.disabled=true;user=(await api('profile',{intro:true})).user;guideReplay=user.guide>=4;guideStep=-1;showGuide();}}
       if(action==='intro-replay'){introStep=0;showIntro();}
@@ -258,36 +358,71 @@
   async function copy(text){if(!text)return;try{await navigator.clipboard.writeText(text);toast('Đã sao chép.');}catch{toast('Chưa truy cập được clipboard. Hãy chọn nội dung và dùng Ctrl+C.');}}
   document.addEventListener('input',e=>{if(e.target.closest('#prompt-form'))updatePrompt();if(e.target.id==='word-search'){search=e.target.value;flashIndex=0;flipped=false;renderFlash();}if(e.target.id==='translation-source'){$('translation-count').textContent=e.target.value.length+' / 600 ký tự';translationController?.abort();$('translation-result').value='';$('copy-translation').disabled=true;$('translation-status').textContent='';}});
   document.addEventListener('change',async e=>{if(e.target.id==='motion-mode'){window.studyMotion?.setPreference(e.target.value);toast('Đã đổi chế độ chuyển động.');}if(e.target.closest('#prompt-form'))updatePrompt();if(e.target.id==='translation-direction'){translationController?.abort();$('translation-result').value='';$('copy-translation').disabled=true;$('translation-status').textContent='';$('translation-source').placeholder=e.target.value==='en-vi'?'Ví dụ: Small steps lead to meaningful progress.':'Ví dụ: Mỗi ngày, tôi học thêm một điều mới.';}if(e.target.id==='rank-opt-in'){const el=e.target;el.disabled=true;try{user=(await api('profile',{publicRank:el.checked})).user;toast(user.publicRank?'Đã tham gia bảng xếp hạng.':'Đã ẩn bạn khỏi bảng xếp hạng.');renderRoute();}catch(err){el.checked=!el.checked;el.disabled=false;toast(err.message);}}});
+  async function sendChat(form){
+    if(!canChat())return;
+    const message=form.elements.message.value.trim();
+    if(!message)return;
+    const job={
+      owner:user.id,id:chatSelection,turnId:crypto.randomUUID(),
+      status:'Mây đang suy nghĩ…',partial:''
+    };
+    const history=chat.slice(-8);
+    chatJob=job;
+    chat.push({role:'user',content:message});
+    $('chat-status').textContent=job.status;
+    form.elements.message.value='';
+    renderChat();
+    renderChatHistory();
+    let status='';
+    try{
+      const data=await (localTutor?localTutor.reply(message,history,{
+        search:form.elements.web.checked,
+        onStatus(text){
+          if(chatJob!==job)return;
+          job.status=text;
+          if($('chat-status'))$('chat-status').textContent=text;
+        },
+        onChunk:text=>showChatChunk(job,text)
+      }):api('ai',{message,history}));
+      if(chatJob!==job)return;
+      job.partial='';
+      chat.push({role:'assistant',content:data.answer,sources:data.sources,note:data.note});
+      if(localTutor){
+        try{
+          const {thread}=await api('conversations',{
+            id:job.id||crypto.randomUUID(),existing:!!job.id,userId:job.owner,turnId:job.turnId,
+            question:message,answer:data.answer,sources:data.sources,note:data.note
+          });
+          if(chatJob!==job)return;
+          chatThreads=[thread,...chatThreads.filter(item=>item.id!==thread.id)];
+          selectChat(thread);
+        }catch{
+          status='Cuộc trò chuyện chưa lưu được trên trình duyệt.';
+        }
+      }
+    }catch(error){
+      if(chatJob!==job)return;
+      chat.pop();
+      const input=$('chat-input');
+      if(input&&!input.value)input.value=message;
+      status=error.message;
+    }finally{
+      if(chatJob===job){
+        chatJob=null;
+        syncTutor();
+        renderChat();
+        renderChatHistory();
+        if($('chat-status'))$('chat-status').textContent=status;
+      }
+    }
+  }
   document.addEventListener('submit',async e=>{const f=e.target;if(!['auth-form','prompt-form','card-form','translate-form','chat-form','profile-form'].includes(f.id))return;e.preventDefault();if(f.id==='prompt-form')return;const b=f.querySelector('[type="submit"],button:not([type])');if(b?.disabled)return;if(b)b.disabled=true;try{
     if(f.id==='auth-form'){const data=Object.fromEntries(new FormData(f));$('auth-status').textContent='';user=(await api(f.dataset.register==='true'?'register':'login',data)).user;aiConfigured=(await api('session')).aiConfigured;enter();}
     if(f.id==='card-form'){await api('words',Object.fromEntries(new FormData(f)));words=(await api('words')).words;$('card-dialog').close();toast('Đã thêm từ mới vào bộ thẻ.');if(currentRoute==='flashcards'){deckFilter='custom';search='';flashIndex=0;flipped=false;renderRoute();}}
     if(f.id==='profile-form'){const data=Object.fromEntries(new FormData(f));user=(await api('profile',{name:data.name,goal:Number(data.goal)})).user;$('profile-button').textContent=user.name.slice(0,2).toUpperCase();$('profile-status').textContent='';toast('Đã lưu hồ sơ học tập.');}
     if(f.id==='translate-form'){translationController?.abort();const controller=new AbortController();translationController=controller;const status=$('translation-status'),output=$('translation-result'),copyButton=$('copy-translation');const [from,to]=f.elements.direction.value.split('-');const source=f.elements.source.value.trim();if(!source)throw new Error('Nhập nội dung cần dịch.');status.textContent='Đang dịch văn bản…';output.value='';copyButton.disabled=true;try{const result=await window.handbookLanguage.translate(source,from,to,AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]),true);if(!output.isConnected||controller.signal.aborted)return;output.value=result.translated;output.lang=to;copyButton.disabled=false;status.textContent='Đã dịch. Hãy đọc lại theo ngữ cảnh của bạn.';$('translation-provider').textContent=result.fallback?'Dịch bởi MyMemory':'Dịch bởi Google';}catch(err){if(controller.signal.aborted)return;throw new Error('Chưa dịch được lúc này. Kiểm tra kết nối mạng rồi thử lại.');}}
-    if(f.id==='chat-form'){
-      if(!canChat())return;
-      const message=f.elements.message.value.trim();
-      if(!message)return;
-      const conversation=chat;
-      const history=chat.slice(-8);
-      $('chat-status').textContent='Mây đang suy nghĩ…';
-      chat.push({role:'user',content:message});
-      f.elements.message.value='';
-      renderChat();
-      try{
-        const data=await (localTutor?localTutor.reply(message,history):api('ai',{message,history}));
-        if(chat!==conversation)return;
-        chat.push({role:'assistant',content:data.answer});
-        renderChat();
-        if($('chat-status'))$('chat-status').textContent='';
-      }catch(err){
-        if(chat!==conversation)return;
-        chat.pop();
-        renderChat();
-        const input=$('chat-input');
-        if(input&&!input.value)input.value=message;
-        throw err;
-      }
-    }
+    if(f.id==='chat-form')await sendChat(f);
+
   }catch(err){const id={'auth-form':'auth-status','card-form':'card-error','profile-form':'profile-status','translate-form':'translation-status','chat-form':'chat-status'}[f.id];if($(id))$(id).textContent=err.message;else toast(err.message);}finally{if(b?.isConnected)b.disabled=f.id==='chat-form'&&!canChat();}});
   window.addEventListener('hashchange',renderRoute);
   document.querySelectorAll('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));

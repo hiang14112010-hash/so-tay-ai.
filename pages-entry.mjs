@@ -1,5 +1,5 @@
-import {browserLocalAPI} from './local-api.mjs';
-import {browserTutor} from './may-ai.mjs?v=1';
+import {browserLocalAPI} from './local-api.mjs?v=2';
+import {browserTutor} from './may-ai.mjs?v=2';
 window.studyAI=browserTutor();
 window.studyLocal=browserLocalAPI();
-await import('./app.js?v=7');
+await import('./app.js?v=8');

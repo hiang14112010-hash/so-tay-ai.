@@ -1,6 +1,6 @@
 import {vocabulary,exercises} from './learning-data.mjs';
 
-const fresh=()=>({users:[],cards:[],reviews:[],awards:[],attempts:[]});
+const fresh=()=>({users:[],cards:[],reviews:[],awards:[],attempts:[],conversations:[]});
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const field=(v,min,max,label)=>{if(typeof v!=='string'||v.trim().length<min||v.trim().length>max)throw fail(`${label} cần từ ${min} đến ${max} ký tự.`);return v.trim();};
 const publicUser=({id,username,name,intro,guide,goal,publicRank})=>({id,username,name,intro,guide,goal,publicRank});
@@ -44,6 +44,36 @@ export function createLocalAPI({read,write,session,crypto=globalThis.crypto,now=
       if(b.name!==undefined)user.name=field(b.name,2,32,'Tên hiển thị');
       user.goal=goal;user.guide=Math.max(guide,user.guide);user.intro=!!(b.intro||user.intro);if(b.publicRank!==undefined)user.publicRank=b.publicRank;
       result={user:publicUser(user)};dirty=true;
+    }else if(route==='conversations'&&verb==='GET'){
+      return {conversations:(state.conversations??[]).filter(thread=>thread.userId===uid).sort((a,b)=>b.updated-a.updated)};
+    }else if(route==='conversations'&&verb==='POST'){
+      if(b.userId!==uid)throw fail('Hồ sơ trò chuyện đã thay đổi.',409);
+      const id=field(b.id,36,36,'Mã cuộc trò chuyện');
+      const turnId=field(b.turnId,36,36,'Mã tin nhắn');
+      const question=field(b.question,1,2000,'Câu hỏi');
+      const answer=field(b.answer,1,8000,'Câu trả lời');
+      const conversations=state.conversations??=[];
+      let thread=conversations.find(item=>item.id===id&&item.userId===uid);
+      if(b.existing&&!thread)throw fail('Cuộc trò chuyện này đã bị xóa.',409);
+      if(!thread){
+        thread={id,userId:uid,title:question.replace(/\s+/g,' ').slice(0,64),updated:now(),messages:[]};
+        conversations.push(thread);
+      }
+      if(thread.messages.some(message=>message.turnId===turnId))return {thread};
+      const sources=Array.isArray(b.sources)?b.sources.slice(0,2).flatMap(source=>{
+        try{
+          const url=new URL(source.url);
+          if(url.protocol!=='https:'||!['vi.wikipedia.org','en.wikipedia.org','en.wiktionary.org'].includes(url.host)||!url.pathname.startsWith('/wiki/'))return [];
+          return [{url:url.href,title:field(source.title,1,240,'Tên nguồn')}];
+        }catch{return [];}
+      }):[];
+      thread.messages.push({role:'user',content:question,turnId},{role:'assistant',content:answer,sources,note:String(b.note||'').slice(0,180)});
+      thread.updated=now();
+      result={thread};dirty=true;
+    }else if(route==='conversations'&&verb==='DELETE'){
+      if(b.userId!==uid)throw fail('Hồ sơ trò chuyện đã thay đổi.',409);
+      state.conversations=(state.conversations??[]).filter(thread=>!(thread.id===b.id&&thread.userId===uid));
+      result={ok:true};dirty=true;
     }else if(route==='words'&&verb==='GET')return {words:deck(state,uid)};
     else if(route==='words'&&verb==='POST'){
       const word=field(b.word,1,80,'Từ mới').toLowerCase(),meaning=field(b.meaning,1,200,'Nghĩa'),example=b.example?field(b.example,1,300,'Ví dụ'):'';
