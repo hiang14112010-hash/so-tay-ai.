@@ -1,6 +1,6 @@
 import { handbookContext, handbookDefinition, searchStudySources } from './may-ai-sources.mjs?v=1';
-import { responsePlan, studyPrompt } from './may-ai-prompt.mjs?v=1';
-import { cloudReply } from './may-ai-cloud.mjs?v=1';
+import { responsePlan, studyPrompt } from './may-ai-prompt.mjs?v=2';
+import { cloudReply } from './may-ai-cloud.mjs?v=2';
 
 const runtimeURL = 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.89/+esm';
 const cloudModel = { label: 'Đám mây · Gemma 4', extendedTokens: 1200 };
@@ -122,7 +122,7 @@ export function browserTutor() {
         detail = '';
       } catch (error) {
         current?.worker.terminate();
-        console.warn('Không khởi động được Mây AI:', error);
+        console.warn('Không khởi động được Agen AI:', error);
         state = 'error';
         detail = /quotaexceeded|quota exceeded/i.test(String(error))
           ? 'Trình duyệt thiếu chỗ để lưu mô hình. Hãy kiểm tra dung lượng trống.'
@@ -135,7 +135,7 @@ export function browserTutor() {
     },
 
     async reply(message, history, { search = false, onStatus = () => {}, onChunk = () => {} } = {}) {
-      if (!this.ready || busy) throw new Error('Mây AI chưa sẵn sàng.');
+      if (!this.ready || busy) throw new Error('Agen AI chưa sẵn sàng.');
       const current = session;
       const mode = selection;
       busy = true;
@@ -150,9 +150,9 @@ export function browserTutor() {
           onStatus('Đang tìm nguồn trên web…');
           try {
             sources = await searchStudySources(message);
-            if (!sources.length) note = 'Mây chưa tìm thấy nguồn phù hợp.';
+            if (!sources.length) note = 'Agen AI chưa tìm thấy nguồn phù hợp.';
           } catch {
-            note = 'Mây chưa truy cập được nguồn web.';
+            note = 'Agen AI chưa truy cập được nguồn web.';
           }
         }
 
@@ -165,7 +165,7 @@ export function browserTutor() {
           return { answer: result.answer, sources, note: [note, result.note].filter(Boolean).join(' ') };
         }
 
-        onStatus('Mây đang chuẩn bị câu trả lời…');
+        onStatus('Agen AI đang chuẩn bị câu trả lời…');
         const { engine, failure } = current;
         const plan = responsePlan(message, history, models[mode].extendedTokens);
         const system = studyPrompt(plan.instruction, glossary, sources);
@@ -189,7 +189,7 @@ export function browserTutor() {
               finishReason = choice?.finish_reason || finishReason;
               const token = choice?.delta?.content;
               if (!token) continue;
-              if (!answer) onStatus('Mây đang viết…');
+              if (!answer) onStatus('Agen AI đang viết…');
               answer += token;
               onChunk(answer);
             }
@@ -197,7 +197,7 @@ export function browserTutor() {
           } catch (error) {
             if (answer.trim() || session !== current || memoryIssue.test(String(error)) || contextIssue.test(String(error))) throw error;
             // Retry only if streaming failed before returning any visible text.
-            onStatus('Mây đang thử lại lượt trả lời…');
+            onStatus('Agen AI đang thử lại lượt trả lời…');
             startTimer();
             const response = await engine.chat.completions.create({ ...request, stream: false });
             answer = response?.choices?.[0]?.message?.content || '';
@@ -207,17 +207,17 @@ export function browserTutor() {
         await Promise.race([generate(), failure, stalled]);
         if (!answer.trim()) throw new Error('Empty model response');
         if (finishReason === 'length') {
-          note = [note, 'Mây đã chạm giới hạn câu trả lời. Bạn có thể nhắn “viết tiếp”.'].filter(Boolean).join(' ');
+          note = [note, 'Agen AI đã chạm giới hạn câu trả lời. Bạn có thể nhắn “viết tiếp”.'].filter(Boolean).join(' ');
         }
         return { answer: answer.trim(), sources, note };
       } catch (error) {
-        console.warn('Mây AI không trả lời được:', error);
+        console.warn('Agen AI không trả lời được:', error);
         if (mode === 'cloud') throw error;
         const cause = String(error);
         let message = 'Mô hình gặp lỗi khi trả lời. Bạn có thể gửi lại câu hỏi.';
         if (/InferenceTimeout|aborterror/i.test(cause) || memoryIssue.test(cause)) {
           message = /InferenceTimeout/i.test(cause)
-            ? 'Mô hình ngừng phản hồi trên máy này. Hãy bật lại Mây AI rồi thử gửi lại.'
+            ? 'Mô hình ngừng phản hồi trên máy này. Hãy bật lại Agen AI rồi thử gửi lại.'
             : 'Mô hình mất kết nối với GPU hoặc thiếu bộ nhớ. Hãy thử mở lại ở chế độ Nhẹ.';
           resetModel(current, message);
         } else if (contextIssue.test(cause)) {

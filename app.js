@@ -5,7 +5,7 @@
   const icons={home:'<path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/>',spark:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',book:'<path d="M12 6Q7 3 3 5v15q5-2 9 1 4-3 9-1V5q-5-2-9 1Zm0 0v15"/>',cards:'<rect x="6" y="5" width="15" height="16" rx="3"/><path d="M17 5V3H3v14h3m4-5h7m-7 4h5"/>',exercise:'<rect x="5" y="4" width="15" height="18" rx="2"/><path d="M9 2h7v4H9zm0 9 2 2 4-4m-6 9h7"/>',review:'<path d="M3 11a9 9 0 1 1 2 7M3 4v7h7m2-5v6l4 2"/>',translate:'<path d="M2 5h12M8 2v3m4 0c0 5-4 9-9 11M5 8c1 3 3 5 7 7m1 6 4.5-10L22 21m-7-4h5"/>',trophy:'<path d="M7 3h10v6a5 5 0 0 1-10 0zm0 2H3v3a4 4 0 0 0 5 4m9-7h4v3a4 4 0 0 1-5 4m-4 2v6m-5 1h10"/>',arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',diagonal:'<path d="M6 18 18 6M7 6h11v11"/>',check:'<path d="m5 12 4 4L20 5"/>',fire:'<path d="M13 2c2 6-2 6-1 10 2-1 3-3 3-5 9 9 4 15-3 15-8 0-11-9-4-15 0 4 1 5 2 5-1-5 2-7 3-10z"/>',target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',volume:'<path d="m4 9 4 0 5-4v14l-5-4H4zM16 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',shield:'<path d="m12 2 8 4v6c0 5-8 10-8 10S4 17 4 12V6zm-4 10 3 3 5-6"/>',copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 3"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>'};
   const icon=name=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.spark}</svg>`;
   const brand=`<span class="brand"><img class="brand-mark" src="book.png" alt=""><span>Sổ tay <b>AI</b><small>HỌC CHỦ ĐỘNG, NHỚ DÀI LÂU</small></span></span>`;
-  const nav=[['home','Tổng quan','home'],['tools','Công cụ AI','spark'],['exercises','Bài tập','exercise'],['flashcards','Flashcard','cards'],['review','Ôn tập','review'],['translate','Dịch thuật','translate'],['leaderboard','Xếp hạng','trophy'],['ai','Mây AI','spark']];
+  const nav=[['home','Tổng quan','home'],['tools','Công cụ AI','spark'],['exercises','Bài tập','exercise'],['flashcards','Flashcard','cards'],['review','Ôn tập','review'],['translate','Dịch thuật','translate'],['leaderboard','Xếp hạng','trophy'],['ai','Agen AI','spark']];
   let grading=false,flipping=false,guideBusy=false;
   let user=null,aiConfigured=false,currentRoute='home',routeVersion=0,screen='boot',introStep=0,introChoice='',guideStep=-1,guideReplay=false,words=[],flashIndex=0,flipped=false,deckFilter='all',search='',attempt=null,selectedAnswer=null,answerResult=null,rankPeriod='week',chat=[],chatDraft='',toastTimer,translationController;
   const localTutor=window.studyAI;
@@ -137,7 +137,7 @@
   }
   function home(s){const date=new Date().toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',weekday:'long',day:'numeric',month:'long'});const w=words[(Math.floor(Date.now()/86400000))%40];const stat=(n,label,i)=>`<div class="stat"><span class="stat-icon">${icon(i)}</span><div><strong>${n}</strong><small>${label}</small></div></div>`;return heading(`Chào ${esc(user.name)} <span class="greeting-mark">✳</span>`,'Một ngày mới, một cơ hội để tiến bộ. Hôm nay mình học gì nhỉ?',`<span class="heading-date">${date}</span>`)+`<div class="dashboard-grid"><section class="card hero"><p class="eyebrow">HỌC CÓ CHỦ ĐÍCH · NHỚ CÓ PHƯƠNG PHÁP</p><h2>Mỗi từ mới,<br>mở thêm một thế giới.</h2><p>Bắt đầu từ một bộ thẻ nhỏ. Hiểu thật rõ, luyện thật đều, để kiến thức ở lại lâu hơn.</p><a class="button lime" href="#${s.due?'review':'flashcards'}">${s.due?'Ôn '+s.due+' từ đến hạn':'Bắt đầu học hôm nay'} ${icon('arrow')}</a><div class="hero-art" aria-hidden="true"><img class="hero-book" src="book.png" alt=""><span class="hero-spark">✧</span></div></section><section class="card daily-word"><p class="eyebrow">MỘT TỪ HAY CHO HÔM NAY</p><div class="word-heading"><h2 lang="en">${esc(w.word)}</h2><button class="icon-button" data-speak="${esc(w.word)}" aria-label="Nghe phát âm ${esc(w.word)}">${icon('volume')}</button></div><span class="word-pos">${esc(w.pos)}</span><p class="meaning">${esc(w.meaning)}</p><p class="sentence" lang="en">“${esc(w.example)}”</p><button class="text-link" data-open-word="${w.id}">Khám phá trong Flashcard ↗</button></section></div><div class="stats-row">${stat(s.learned,'TỪ ĐÃ HỌC','book')}${stat(s.streak,'NGÀY LIÊN TIẾP','fire')}${stat(s.xp,'ĐIỂM KINH NGHIỆM','spark')}${stat(s.due,'TỪ ĐẾN LỊCH ÔN','review')}</div><div class="dashboard-grid"><section><div class="section-heading"><h2>Góc công cụ của bạn</h2><a class="text-link" href="#tools">Khám phá công cụ ↗</a></div><div class="tool-grid">${toolCard('tools','spark','Ghép prompt','Biến ý tưởng thành câu hỏi rõ ràng, hiệu quả.')}${toolCard('flashcards','cards','Flashcard','Lật thẻ, tự nhớ và lưu từ của riêng bạn.')}${toolCard('translate','translate','Dịch thuật','Hiểu từ và câu trong đúng ngữ cảnh.')}</div><div class="next-session">${icon('exercise')}<div><strong>Một chút thử thách, thêm chút tự tin.</strong><p>8 câu hỏi · Từ vựng & kỹ năng dùng AI</p></div><a class="button small" href="#exercises">Làm bài tập →</a></div></section><section class="card progress-card"><div class="section-heading"><h2>Nhịp học của bạn</h2><span class="pill green">7 ngày qua</span></div><p>Đều đặn một chút, mỗi ngày.</p><div class="goal-line"><span>Mục tiêu hôm nay</span><strong>${Math.min(s.today,user.goal)} / ${user.goal} câu đúng</strong></div><progress value="${Math.min(s.today,user.goal)}" max="${user.goal}" aria-label="Mục tiêu câu đúng hôm nay"></progress><div class="week-bars" aria-label="Điểm trong 7 ngày qua">${s.week.map(d=>`<div class="day-bar" title="${d.day}: ${d.xp} XP"><i style="height:${Math.max(6,Math.round(d.xp/Math.max(10,...s.week.map(x=>x.xp))*62))}px"></i>${new Date(d.day+'T12:00:00+07:00').toLocaleDateString('vi-VN',{weekday:'short'}).replace('Th ','T')}</div>`).join('')}</div><div class="daily-tip">${icon('spark')}Mỗi câu đúng mới là một bước tiến.</div></section></div>`;}
   function toolCard(route,i,title,text){return `<a class="tool-card" href="#${route}"><span class="tool-icon">${icon(i)}</span><span class="tool-arrow">${icon('diagonal')}</span><h3>${title}</h3><p>${text}</p></a>`;}
-  function toolsPage(){return heading('Hỏi AI, rõ ràng hơn.','Ghép một prompt có mục tiêu. Giữ quyền chủ động trong cách bạn học.')+`<div class="template-row" aria-label="Mẫu prompt"><button class="template-chip" data-template="learn">✧ Học một từ mới</button><button class="template-chip" data-template="quiz">✎ Tạo bài luyện tập</button><button class="template-chip" data-template="check">✓ Kiểm tra câu đã viết</button></div><div class="two-columns"><form id="prompt-form" class="card"><div class="section-heading"><h2>Công thức prompt của bạn</h2><span class="pill green">5 thành phần</span></div><div class="form-grid"><label class="full-width">01 · Mục tiêu học tập<input name="goal" maxlength="180" required value="${esc(promptDraft.goal)}"></label><label>02 · Từ cần học<input name="word" maxlength="80" required value="${esc(promptDraft.word)}"></label><label>03 · Trình độ<select name="level">${['Lớp 11 · A2–B1','Cơ bản · A1–A2','Nâng cao · B1–B2'].map(x=>`<option ${promptDraft.level===x?'selected':''}>${x}</option>`).join('')}</select></label><label class="full-width">Ngữ cảnh hoặc câu bạn muốn kiểm tra<textarea name="context" rows="3" maxlength="500" required>${esc(promptDraft.context)}</textarea></label><label class="full-width">04 · Yêu cầu cụ thể<textarea name="request" rows="3" maxlength="600" required>${esc(promptDraft.request)}</textarea></label><label class="full-width">05 · Cách trình bày<select name="format">${['Theo từng mục ngắn','Bảng dễ so sánh','Từng bước, có ví dụ'].map(x=>`<option ${promptDraft.format===x?'selected':''}>${x}</option>`).join('')}</select></label></div></form><section class="card prompt-preview"><span class="mini-label">${icon('spark')} PROMPT ĐƯỢC GHÉP TRỰC TIẾP</span><div id="prompt-output" class="prompt-output"></div><div class="row wrap" style="margin-top:18px"><button class="button primary" data-action="copy-prompt">${icon('copy')} Sao chép prompt</button><button class="button" data-action="prompt-to-ai">Dùng với Mây AI ↗</button></div><ul class="tips-list"><li>${icon('check')}Có câu gốc giúp AI hiểu đúng nghĩa.</li><li>${icon('check')}Tự trả lời trước khi xem lời giải.</li><li>${icon('check')}Đối chiếu thông tin quan trọng với từ điển.</li></ul></section></div>`;}
+  function toolsPage(){return heading('Hỏi AI, rõ ràng hơn.','Ghép một prompt có mục tiêu. Giữ quyền chủ động trong cách bạn học.')+`<div class="template-row" aria-label="Mẫu prompt"><button class="template-chip" data-template="learn">✧ Học một từ mới</button><button class="template-chip" data-template="quiz">✎ Tạo bài luyện tập</button><button class="template-chip" data-template="check">✓ Kiểm tra câu đã viết</button></div><div class="two-columns"><form id="prompt-form" class="card"><div class="section-heading"><h2>Công thức prompt của bạn</h2><span class="pill green">5 thành phần</span></div><div class="form-grid"><label class="full-width">01 · Mục tiêu học tập<input name="goal" maxlength="180" required value="${esc(promptDraft.goal)}"></label><label>02 · Từ cần học<input name="word" maxlength="80" required value="${esc(promptDraft.word)}"></label><label>03 · Trình độ<select name="level">${['Lớp 11 · A2–B1','Cơ bản · A1–A2','Nâng cao · B1–B2'].map(x=>`<option ${promptDraft.level===x?'selected':''}>${x}</option>`).join('')}</select></label><label class="full-width">Ngữ cảnh hoặc câu bạn muốn kiểm tra<textarea name="context" rows="3" maxlength="500" required>${esc(promptDraft.context)}</textarea></label><label class="full-width">04 · Yêu cầu cụ thể<textarea name="request" rows="3" maxlength="600" required>${esc(promptDraft.request)}</textarea></label><label class="full-width">05 · Cách trình bày<select name="format">${['Theo từng mục ngắn','Bảng dễ so sánh','Từng bước, có ví dụ'].map(x=>`<option ${promptDraft.format===x?'selected':''}>${x}</option>`).join('')}</select></label></div></form><section class="card prompt-preview"><span class="mini-label">${icon('spark')} PROMPT ĐƯỢC GHÉP TRỰC TIẾP</span><div id="prompt-output" class="prompt-output"></div><div class="row wrap" style="margin-top:18px"><button class="button primary" data-action="copy-prompt">${icon('copy')} Sao chép prompt</button><button class="button" data-action="prompt-to-ai">Dùng với Agen AI ↗</button></div><ul class="tips-list"><li>${icon('check')}Có câu gốc giúp AI hiểu đúng nghĩa.</li><li>${icon('check')}Tự trả lời trước khi xem lời giải.</li><li>${icon('check')}Đối chiếu thông tin quan trọng với từ điển.</li></ul></section></div>`;}
   function updatePrompt(){const form=$('prompt-form');if(!form)return;promptDraft=Object.fromEntries(new FormData(form));$('prompt-output').textContent=`Bạn là gia sư tiếng Anh. Trình độ của tôi: ${promptDraft.level}.\n\nMục tiêu: ${promptDraft.goal}.\nTừ cần học: ${promptDraft.word}.\nNgữ cảnh: ${promptDraft.context}\n\n${promptDraft.request}\n\nTrình bày: ${promptDraft.format}. Nếu chưa chắc, hãy nói rõ; không tự bịa thông tin. Hướng dẫn tôi tự suy nghĩ thay vì làm hộ.`;}
   function exercisePage(){if(attempt?.kind==='exercise')return quizPage();return heading('Tự thử sức. Hiểu sâu hơn.','Bài tập riêng biệt, có lời giải ngay sau mỗi câu trả lời.')+`<section class="feature-banner"><div><p class="eyebrow">BÀI LUYỆN TỔNG HỢP</p><h2>Từ vựng & kỹ năng học với AI</h2><p>8 câu hỏi ngẫu nhiên về nghĩa, điền từ và cách dùng AI. Mỗi đáp án là một cơ hội để hiểu thêm.</p></div><button class="button primary" data-start-quiz="exercise">Bắt đầu luyện tập ${icon('arrow')}</button></section><div class="exercise-features">${[['01','Hiểu đúng nghĩa','Nhận ra nghĩa phù hợp của từ trong từng ngữ cảnh.'],['02','Dùng từ trong câu','Chọn từ còn thiếu, phân biệt từ loại và cụm từ.'],['03','Học AI chủ động','Luyện viết prompt, kiểm chứng thông tin và tự học.']].map(([n,t,p])=>`<div class="card"><span class="big-number">${n}</span><h3>${t}</h3><p>${p}</p></div>`).join('')}</div><p class="privacy-note">+10 XP cho mỗi câu trả lời đúng lần đầu trong ngày. Làm lại giúp củng cố kiến thức và không cộng điểm trùng.</p>`;}
   function filteredWords(){return words.filter(w=>(deckFilter==='all'||(deckFilter==='custom'?w.custom:w.seen))&&(`${w.word} ${w.meaning}`.toLowerCase().includes(search.toLowerCase())));}
@@ -168,14 +168,14 @@
             <option value="standard">Nhẹ · Qwen 1.5B</option>
             <option value="advanced">Mạnh hơn · Qwen 3B</option>
           </select>
-          <button class="button primary small" type="button" data-action="ai-enable" hidden>Bật Mây AI</button>
+          <button class="button primary small" type="button" data-action="ai-enable" hidden>Bật Agen AI</button>
         </div>
         <p id="ai-model-info" hidden></p>
         <a class="text-link" href="#tools" hidden>Ghép và sao chép prompt</a>
         <progress id="ai-progress" max="100" hidden aria-label="Tiến độ tải mô hình"></progress>
         <p id="ai-detail" role="status"></p>
       </details>
-    </section>`:aiConfigured?'':'<div class="notice">Mây AI đang chờ kết nối. <a href="#tools">Ghép và sao chép prompt</a></div>';
+    </section>`:aiConfigured?'':'<div class="notice">Agen AI đang chờ kết nối. <a href="#tools">Ghép và sao chép prompt</a></div>';
     const disabled=canChat()?'':'disabled';
     const history=localTutor?`<aside class="chat-history">
       <details open><summary>Lịch sử trò chuyện</summary>
@@ -190,17 +190,20 @@
       <span><strong>Tìm trên web</strong><small>Khi bật, web gửi từ khóa từ câu hỏi tới Wikimedia.</small></span>
     </label>`:'';
     const privacy=localTutor?'Lịch sử lưu theo hồ sơ trên trình duyệt này.':'Tin nhắn được gửi tới nhà cung cấp AI khi bạn bấm Gửi.';
-    return heading('Mây AI, bạn học của bạn.','Hỏi nghĩa một từ, luyện đặt câu hoặc kiểm tra điều bạn chưa chắc.')+`<div class="chat-layout ${localTutor?'with-history':''}">
+    return heading('Agen AI, bạn học của bạn.','Hỏi nghĩa một từ, luyện đặt câu hoặc kiểm tra điều bạn chưa chắc.')+`<div class="chat-layout ${localTutor?'with-history':''}">
       ${history}
       <div class="chat-panel">
-        <div class="ai-welcome"><div class="orb" aria-hidden="true"></div><h2>Hôm nay, mình cùng học gì?</h2></div>
+        <div class="ai-welcome">
+          <div class="agen-pet-perch" aria-hidden="true"><div id="agen-pet" class="agen-pet-sprite" data-mood="idle"></div></div>
+          <h2>Hôm nay, mình cùng học gì?</h2>
+        </div>
         ${setup}
         <div class="ai-prompts"><button data-ai-prompt="Giải thích sustainable trong cụm a sustainable study routine cho học sinh lớp 11.">✧ Giải thích một từ theo ngữ cảnh</button><button data-ai-prompt="Hãy giúp tôi luyện đặt câu với contribute. Cho gợi ý, chờ tôi viết rồi mới góp ý.">✎ Luyện đặt câu, từng bước một</button></div>
         <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Cuộc trò chuyện"></div>
         <form id="chat-form">
           ${search}
           <div class="chat-compose">
-            <textarea id="chat-input" name="message" rows="2" maxlength="${localTutor?6000:2000}" required aria-label="Tin nhắn cho Mây AI" placeholder="Nhập điều bạn muốn học…" ${!localTutor&&!aiConfigured?'disabled':''}></textarea>
+            <textarea id="chat-input" name="message" rows="2" maxlength="${localTutor?6000:2000}" required aria-label="Tin nhắn cho Agen AI" placeholder="Nhập điều bạn muốn học…" ${!localTutor&&!aiConfigured?'disabled':''}></textarea>
             <button class="button primary" type="submit" ${disabled} aria-label="Gửi tin nhắn">${icon('arrow')}</button>
           </div>
         </form>
@@ -243,13 +246,13 @@
     button.hidden=state==='unsupported'||ready;
     setup.querySelector('a').hidden=ready;
     button.disabled=state==='loading'||!!chatJob;
-    button.textContent=state==='loading'?'Đang bật…':state==='error'?'Thử lại':activeModel?'Đổi mô hình':'Bật Mây AI';
+    button.textContent=state==='loading'?'Đang bật…':state==='error'?'Thử lại':activeModel?'Đổi mô hình':'Bật Agen AI';
     const cloud=selection==='cloud';
     $('ai-mode-label').textContent=cloud?model.label:'Trên thiết bị · '+model.label;
     $('ai-cloud-info').hidden=!cloud;
     const modelInfo=$('ai-model-info');
     modelInfo.hidden=cloud||ready;
-    modelInfo.textContent=cloud||ready?'':`Tải khoảng ${model.download} khi bấm Bật Mây AI.`;
+    modelInfo.textContent=cloud||ready?'':`Tải khoảng ${model.download} khi bấm Bật Agen AI.`;
     $('chat-privacy').textContent=selection==='cloud'
       ?'Khi gửi, câu hỏi và tối đa 4 lượt hỏi đáp gần nhất được chuyển tới Cloudflare để tạo câu trả lời. Lịch sử vẫn lưu trên trình duyệt này.'
       :'Mô hình chạy trên thiết bị. Lịch sử lưu theo hồ sơ trên trình duyệt này. Hãy kiểm chứng câu trả lời.';
@@ -267,14 +270,16 @@
   function renderChat(){
     const log=$('chat-log');
     if(!log)return;
+    $('agen-pet').dataset.mood=chatJob?(chatJob.partial?'replying':'thinking'):'idle';
     log.innerHTML=chat.map(message=>{
       const links=(message.sources||[]).map((source,index)=>`<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">[${index+1}] ${esc(source.title)}</a>`).join('');
       const sources=links?`<div class="chat-sources"><strong>Nguồn tìm được</strong>${links}</div>`:'';
       const note=message.note?`<small class="chat-source-note">${esc(message.note)}</small>`:'';
-      return `<div class="message ${message.role==='user'?'user':''}"><strong>${message.role==='user'?'Bạn':'Mây AI'}</strong>${esc(message.content)}${sources}${note}</div>`;
+      const author=message.role==='user'?'Bạn':'<span class="agen-pet-sprite agen-pet-avatar" aria-hidden="true"></span>Agen AI';
+      return `<div class="message ${message.role==='user'?'user':''}"><strong class="chat-author">${author}</strong>${esc(message.content)}${sources}${note}</div>`;
     }).join('');
     if(chatJob?.partial){
-      log.insertAdjacentHTML('beforeend','<div id="chat-partial" class="message" aria-hidden="true"><strong>Mây AI</strong><span></span></div>');
+      log.insertAdjacentHTML('beforeend','<div id="chat-partial" class="message" aria-hidden="true"><strong class="chat-author"><span class="agen-pet-sprite agen-pet-avatar" aria-hidden="true"></span>Agen AI</strong><span></span></div>');
       log.lastElementChild.lastElementChild.textContent=chatJob.partial;
     }
     log.scrollTop=log.scrollHeight;
@@ -305,7 +310,7 @@
       if(b.dataset.startQuiz){b.disabled=true;const version=routeVersion;const data=await api('quiz',{kind:b.dataset.startQuiz});if(version!==routeVersion||screen!=='app-shell')return;attempt={...data,kind:b.dataset.startQuiz};selectedAnswer=null;answerResult=null;$('main-content').innerHTML=quizPage();focusTitle($('main-content'));return;}
       if(b.dataset.answer!==undefined){if(answerResult||grading)return;selectedAnswer=Number(b.dataset.answer);document.querySelectorAll('[data-answer]').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));$('grade-button').disabled=false;return;}
       if(b.dataset.rankPeriod){rankPeriod=b.dataset.rankPeriod;return renderRoute();}
-      if(b.dataset.aiPrompt){if(!localTutor&&!aiConfigured){toast('Mây AI chưa được kết nối. Bạn có thể dùng Công cụ AI để ghép prompt.');return;}$('chat-input').value=b.dataset.aiPrompt;$('chat-input').focus();return;}
+      if(b.dataset.aiPrompt){if(!localTutor&&!aiConfigured){toast('Agen AI chưa được kết nối. Bạn có thể dùng Công cụ AI để ghép prompt.');return;}$('chat-input').value=b.dataset.aiPrompt;$('chat-input').focus();return;}
       if(b.dataset.chatId){
         if(!chatJob&&!deletingChat)openChat(chatThreads.find(thread=>thread.id===b.dataset.chatId));
         return;
@@ -359,7 +364,7 @@
       if(action==='ai-enable'){
         await localTutor.enable();
         if(localTutor.ready&&$('chat-input')){
-          $('chat-status').textContent='Mây AI đã sẵn sàng.';
+          $('chat-status').textContent='Agen AI đã sẵn sàng.';
           $('chat-input').focus();
         }
       }
@@ -389,7 +394,7 @@
     if(!message)return;
     const job={
       owner:user.id,id:chatSelection,turnId:crypto.randomUUID(),
-      status:'Mây đang suy nghĩ…',partial:''
+      status:'Agen AI đang suy nghĩ…',partial:''
     };
     const history=chat.slice(-8);
     chatJob=job;

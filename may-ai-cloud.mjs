@@ -1,15 +1,15 @@
 const endpoint = 'https://may-ai.hiang14112010-sotayai.workers.dev/chat';
 
 const messages = {
-  quota: 'Mây AI trên đám mây đang chạm hạn mức. Bạn thử lại sau nhé.',
+  quota: 'Agen AI trên đám mây đang chạm hạn mức. Bạn thử lại sau nhé.',
   rate: 'Bạn vừa gửi nhiều câu liên tiếp. Đợi một phút rồi gửi lại nhé.',
-  unavailable: 'Mây AI trên đám mây chưa phản hồi. Bạn thử gửi lại sau nhé.',
+  unavailable: 'Agen AI trên đám mây chưa phản hồi. Bạn thử gửi lại sau nhé.',
   message: 'Câu hỏi cần có nội dung và dài tối đa 6.000 ký tự.',
   size: 'Tin nhắn và ngữ cảnh gửi kèm quá lớn. Hãy mở cuộc trò chuyện mới để thử lại.'
 };
 
 export async function cloudReply(message, history, { sources, glossary, onStatus, onChunk }) {
-  onStatus('Mây đang hỏi mô hình trên đám mây…');
+  onStatus('Agen AI đang hỏi mô hình trên đám mây…');
   let answer = '', incomplete = false;
   try {
     const response = await fetch(endpoint, {
@@ -38,7 +38,7 @@ export async function cloudReply(message, history, { sources, glossary, onStatus
       incomplete ||= choice?.finish_reason === 'length' || event.finish_reason === 'length';
       const token = choice?.delta?.content ?? event.response;
       if (typeof token !== 'string' || !token) return;
-      if (!answer) onStatus('Mây đang viết…');
+      if (!answer) onStatus('Agen AI đang viết…');
       answer += token;
       onChunk(answer);
     };
@@ -56,7 +56,7 @@ export async function cloudReply(message, history, { sources, glossary, onStatus
       await reader.cancel().catch(() => {});
     }
     if (!answer.trim()) throw new Error(messages.unavailable);
-    return { answer: answer.trim(), note: incomplete ? 'Mây đã chạm giới hạn câu trả lời. Bạn có thể nhắn “viết tiếp”.' : '' };
+    return { answer: answer.trim(), note: incomplete ? 'Agen AI đã chạm giới hạn câu trả lời. Bạn có thể nhắn “viết tiếp”.' : '' };
   } catch (error) {
     if (answer.trim()) return { answer: answer.trim(), note: 'Câu trả lời từ đám mây bị gián đoạn.' };
     throw new Error(Object.values(messages).includes(error.message) ? error.message : messages.unavailable);
