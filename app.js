@@ -160,6 +160,7 @@
       <label for="ai-model">Mô hình trả lời</label>
       <div class="row ai-model-row">
         <select id="ai-model">
+          <option value="cloud">Đám mây · Gemma 4</option>
           <option value="standard">Nhẹ · Qwen 1.5B</option>
           <option value="advanced">Mạnh hơn · Qwen 3B</option>
         </select>
@@ -199,7 +200,7 @@
           </div>
         </form>
         <p id="chat-status" class="form-status" role="status"></p>
-        <p class="privacy-note">${privacy} Hãy kiểm chứng câu trả lời.</p>
+        <p id="chat-privacy" class="privacy-note">${privacy} Hãy kiểm chứng câu trả lời.</p>
       </div>
     </div>`;
   }
@@ -238,8 +239,12 @@
     setup.querySelector('a').hidden=ready;
     button.disabled=state==='loading'||!!chatJob;
     button.textContent=state==='loading'?'Đang bật…':state==='error'?'Thử lại':activeModel?'Đổi mô hình':'Bật Mây AI';
-    $('ai-model-info').textContent=ready?'Đang dùng '+model.label+'.'
+    $('ai-model-info').textContent=selection==='cloud'?'Gửi câu hỏi ngay, không cần tải mô hình.'
+      :ready?'Đang dùng '+model.label+'.'
       :`Lần đầu tải khoảng ${model.download}.${selection==='advanced'?' Dành cho bài luận và câu hỏi nhiều ý. Cần nhiều bộ nhớ đồ họa hơn.':''}`;
+    $('chat-privacy').textContent=selection==='cloud'
+      ?'Khi gửi, câu hỏi và tối đa 4 lượt hỏi đáp gần nhất được chuyển tới Cloudflare để tạo câu trả lời. Lịch sử vẫn lưu trên trình duyệt này.'
+      :'Mô hình chạy trên thiết bị. Lịch sử lưu theo hồ sơ trên trình duyệt này. Hãy kiểm chứng câu trả lời.';
     const meter=$('ai-progress');
     meter.hidden=state!=='loading';
     if(progress===null)meter.removeAttribute('value');

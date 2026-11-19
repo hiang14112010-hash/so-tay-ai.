@@ -8,13 +8,19 @@ Bản này chạy hoàn toàn trong trình duyệt. Hồ sơ, mật khẩu đã 
 
 Bảng xếp hạng chỉ so sánh các hồ sơ trên cùng trình duyệt. Chấm điểm chạy ở phía trình duyệt nên chỉ phù hợp tự học. Không có tài khoản hay dữ liệu người dùng mẫu được đóng gói trong mã nguồn.
 
-Mây AI chạy Qwen2.5 bằng WebLLM trong trình duyệt có WebGPU. Chế độ Nhẹ (1.5B) tải khoảng 870 MB, còn chế độ Mạnh hơn (3B) tải khoảng 1,74 GB và cần nhiều bộ nhớ đồ họa hơn. Mô hình được tải từ Hugging Face khi người dùng bật Mây AI, cùng thư viện từ jsDelivr. Tin nhắn được xử lý trên thiết bị và lịch sử lưu theo hồ sơ bằng IndexedDB. Khi bật Tìm trên web, chỉ câu hỏi hiện tại được gửi tới Wikimedia để tìm trích đoạn Wikipedia hoặc Wiktionary. Dịch thuật gửi câu người dùng nhập đến Google/MyMemory khi bấm Dịch.
+Mây AI mặc định chạy Gemma 4 qua Cloudflare Workers AI. Khi gửi, trình duyệt chuyển câu hỏi và tối đa bốn lượt hỏi đáp gần nhất tới Worker. Lịch sử lưu theo hồ sơ bằng IndexedDB. Khi bật Tìm trên web, trình duyệt gửi từ khóa của câu hỏi tới Wikimedia để tìm nguồn.
+
+Chế độ Nhẹ (Qwen 1.5B, tải khoảng 870 MB) và Mạnh hơn (Qwen 3B, khoảng 1,74 GB) chạy bằng WebLLM trên thiết bị có WebGPU. Dịch thuật gửi câu người dùng nhập đến Google/MyMemory khi bấm Dịch.
 
 ## Xuất bản
 
 Trong Settings → Pages, chọn Deploy from a branch, nhánh main, thư mục /(root), rồi Save. Các đường dẫn đều tương đối để chạy dưới /so-tay-ai/.
 
 Mở website bằng HTTPS; không mở index.html trực tiếp bằng file://.
+
+## Worker Mây AI
+
+Worker `may-ai` dùng `may-ai-cloud-worker.mjs` cùng mô-đun `may-ai-prompt.mjs`. Nó cần hai binding trên Cloudflare: `AI` (Workers AI) và `CHAT_RATE` (giới hạn 8 yêu cầu mỗi 60 giây theo địa chỉ IP). Endpoint công khai dùng Cloudflare Workers Free để giới hạn sử dụng theo hạn mức miễn phí. Khi đổi địa chỉ Worker, cập nhật endpoint trong `may-ai-cloud.mjs` và origin trong mã Worker.
 
 ## Font
 
