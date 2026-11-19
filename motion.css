@@ -1,0 +1,110 @@
+/* Chuyển động giữ nội dung là trọng tâm; tôn trọng prefers-reduced-motion. */
+.button,.nav-item,.tool-card,.template-chip,.quiz-option,.intro-option,.icon-button{transition:background .25s,border-color .25s,box-shadow .25s,transform .25s cubic-bezier(.2,.8,.2,1)}
+.button.primary:hover,.button.lime:hover{box-shadow:0 8px 23px #294f3e24;transform:translateY(-3px)}.button:active,.icon-button:active{transform:scale(.96)}.button:hover>svg:last-child{transform:translateX(3px)}.button svg{transition:transform .25s}.icon-button:hover{background:#eff3e7;transform:rotate(-7deg)}
+.ripple-host{position:relative;overflow:hidden;isolation:isolate}.tap-ripple{position:absolute;width:var(--ripple-size);height:var(--ripple-size);border-radius:50%;background:currentColor;opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(0);animation:tap-wave .65s ease-out;z-index:-1}
+.nav-item.active{animation:nav-arrive .28s ease-out}.nav-item.active:after{animation:nav-dot .45s cubic-bezier(.2,1.5,.4,1)}.nav-item:hover svg{transform:translateY(-2px)}.nav-item svg{transition:transform .25s}.tool-card:hover .tool-icon{transform:rotate(-8deg) scale(1.08)}.tool-icon{transition:transform .35s cubic-bezier(.2,.8,.2,1)}.tool-arrow{transition:transform .25s}.tool-card:hover .tool-arrow{transform:translate(3px,-3px)}
+.motion-reveal{opacity:0;transform:translateY(18px);transition:opacity .65s var(--reveal-delay,0ms),transform .65s cubic-bezier(.2,.75,.2,1) var(--reveal-delay,0ms)}.motion-reveal.motion-in{opacity:1;transform:translateY(0)}
+.route-enter{animation:route-flow .45s cubic-bezier(.2,.75,.2,1)}.page-heading{animation:heading-arrive .5s ease-out}.page-heading h1{animation:heading-arrive .65s ease-out}.hero-book{animation:book-float 6s ease-in-out infinite}.hero-spark,.tiny-spark{animation:spark-turn 7s ease-in-out infinite}.hero-art:before{animation:orbit-breathe 8s ease-in-out infinite}.hero-art:after{animation:orbit-breathe 8s 1.5s ease-in-out infinite}.greeting-mark{display:inline-block;animation:greeting-turn 1.2s cubic-bezier(.2,.8,.2,1)}.day-bar i{transform-origin:bottom;animation:bar-grow .8s cubic-bezier(.2,.7,.2,1) both}.day-bar:nth-child(2) i{animation-delay:60ms}.day-bar:nth-child(3) i{animation-delay:120ms}.day-bar:nth-child(4) i{animation-delay:180ms}.day-bar:nth-child(5) i{animation-delay:240ms}.day-bar:nth-child(6) i{animation-delay:300ms}.day-bar:nth-child(7) i{animation-delay:360ms}
+.intro-inner{animation:intro-scene .7s cubic-bezier(.2,.8,.2,1)}.intro-inner h1{animation:heading-arrive .75s .08s both}.intro-inner>p{animation:heading-arrive .75s .16s both}.intro-inner>.row{animation:heading-arrive .65s .24s both}.intro-options .intro-option{animation:heading-arrive .55s both}.intro-options .intro-option:nth-child(2){animation-delay:60ms}.intro-options .intro-option:nth-child(3){animation-delay:120ms}.intro-options .intro-option:nth-child(4){animation-delay:180ms}.intro-progress span{transition:width .4s,background .4s}.intro-option[aria-pressed=true]{box-shadow:0 0 0 3px #c8e6a810;transform:translateY(-2px)}
+.guide-heading{animation:heading-arrive .6s ease-out}.book-cover{animation:cover-arrive .8s cubic-bezier(.2,.75,.2,1);transform-style:preserve-3d;transform-origin:8% 50%;transition:transform .3s}.chapter-step{transition:background .3s,color .3s,transform .3s}.chapter-step.active{transform:translateY(-3px);box-shadow:0 5px 15px #2e4b2520}.guide-controls{animation:heading-arrive .5s .2s both}
+.quiz-feedback{animation:feedback-arrive .35s cubic-bezier(.2,1.2,.3,1)}.quiz-option.correct{animation:correct-pulse .55s ease-out}.quiz-option.wrong{animation:wrong-shake .35s ease-out}.quiz-card{animation:question-arrive .4s ease-out}.quiz-result{animation:result-arrive .6s cubic-bezier(.2,.9,.3,1)}.result-medal{animation:medal-turn 1s cubic-bezier(.2,.8,.2,1)}.score{animation:heading-arrive .6s .2s both}.message{animation:message-arrive .3s ease-out}.message.user{animation-name:user-message-arrive}.toast.show{animation:toast-arrive .35s cubic-bezier(.2,.9,.3,1)}dialog[open]{animation:dialog-arrive .3s cubic-bezier(.2,.8,.2,1)}dialog[open]::backdrop{animation:backdrop-arrive .3s ease-out}.loading:after{content:'';display:block;width:26px;height:26px;border:2px solid #dce5d0;border-top-color:#60834d;border-radius:50%;animation:loader-spin .8s linear infinite;margin:20px auto}
+@keyframes tap-wave{0%{opacity:.17;transform:translate(-50%,-50%) scale(0)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+@keyframes nav-arrive{from{background:#f7f8f2;transform:translateX(-4px)}to{background:#e9efdf;transform:translateX(0)}}@keyframes nav-dot{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes route-flow{from{opacity:0;transform:translateY(10px);filter:blur(2px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}@keyframes heading-arrive{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes book-float{0%,100%{transform:rotate(17deg) translateY(0)}50%{transform:rotate(12deg) translateY(-9px)}}@keyframes spark-turn{0%,100%{transform:rotate(0) scale(1);opacity:.7}50%{transform:rotate(25deg) scale(1.12);opacity:1}}@keyframes orbit-breathe{50%{transform:scale(1.07);opacity:.5}}@keyframes greeting-turn{from{transform:rotate(-100deg) scale(.6);opacity:0}to{transform:rotate(0) scale(1);opacity:1}}@keyframes bar-grow{from{transform:scaleY(.05);opacity:.3}to{transform:scaleY(1);opacity:1}}
+@keyframes intro-scene{from{opacity:0;transform:translateY(20px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes cover-arrive{from{opacity:0;transform:perspective(1000px) rotateY(20deg) rotate(-12deg) translateY(30px)}to{opacity:1;transform:perspective(1000px) rotateY(0deg) rotate(-5deg) translateY(0)}}@keyframes book-spread{from{opacity:0;transform:perspective(1600px) rotateY(-8deg) scale(.97)}to{opacity:1;transform:perspective(1600px) rotateY(0) scale(1)}}@keyframes page-leaf{0%{transform:rotateY(0);opacity:1}85%{opacity:1}100%{transform:rotateY(-175deg);opacity:0}}@keyframes page-content{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes feedback-arrive{from{opacity:0;transform:translateY(9px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes correct-pulse{50%{box-shadow:0 0 0 5px #91b36622;transform:scale(1.01)}}@keyframes wrong-shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}@keyframes question-arrive{from{opacity:0;transform:translateX(13px)}to{opacity:1;transform:translateX(0)}}@keyframes result-arrive{from{opacity:0;transform:translateY(22px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes medal-turn{from{opacity:0;transform:rotate(-140deg) scale(.3)}to{opacity:1;transform:rotate(0) scale(1)}}
+@keyframes message-arrive{from{opacity:0;transform:translate(-8px,6px)}to{opacity:1;transform:translate(0,0)}}@keyframes user-message-arrive{from{opacity:0;transform:translate(8px,6px)}to{opacity:1;transform:translate(0,0)}}@keyframes toast-arrive{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}@keyframes dialog-arrive{from{opacity:0;transform:translateY(15px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes backdrop-arrive{from{opacity:0}to{opacity:1}}@keyframes loader-spin{to{transform:rotate(360deg)}}
+@media(max-width:650px){.journey-book:after{display:none}.hero-book{animation-duration:8s}.motion-reveal{--reveal-delay:0ms!important}}@keyframes book-mobile{from{opacity:0;transform:perspective(900px) rotateX(5deg) translateY(15px)}to{opacity:1;transform:perspective(900px) rotateX(0) translateY(0)}}
+@media(prefers-reduced-motion:reduce){html:not([data-motion="full"]) *,html:not([data-motion="full"]) *:before,html:not([data-motion="full"]) *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}html:not([data-motion="full"]) .motion-reveal{opacity:1;transform:none}html:not([data-motion="full"]) .journey-book:after{display:none}html:not([data-motion="full"]) .tap-ripple{display:none}}
+
+html[data-motion="reduced"] *,html[data-motion="reduced"] *:before,html[data-motion="reduced"] *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}html[data-motion="reduced"] .motion-reveal{opacity:1;transform:none}html[data-motion="reduced"] .journey-book:after,html[data-motion="reduced"] .tap-ripple{display:none}
+/* Keep the book mounted. Turn actual content around a stable spine. */
+.guide-screen{overflow-x:clip}.guide-heading,.guide-controls{animation:none}
+.journey-book{position:relative;grid-template-columns:1fr 1fr;perspective:2000px;animation:none;transform:none;isolation:isolate}
+.journey-book:after{display:none!important}.journey-book:before{content:'';position:absolute;top:0;bottom:0;left:calc(50% - 10px);width:20px;background:linear-gradient(90deg,transparent,#5960441c 45%,#59604425 50%,transparent);z-index:2;pointer-events:none}
+.journey-book>.book-page{min-height:480px}.book-page.right>*{animation:none}.page-number{text-align:right;margin:25px 0 0}
+.book-cover{animation:none;transition:none;transform:rotate(-5deg)}
+.book-measure{position:fixed!important;top:0;left:-20000px;margin:0!important;visibility:hidden;pointer-events:none}
+.book-turn-sheet{position:absolute;top:0;width:50%;height:100%;z-index:5;transform-style:preserve-3d;will-change:transform;pointer-events:none}
+.turn-forward{right:0;transform-origin:left center}.turn-backward{left:0;transform-origin:right center}
+.turn-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;background:#fffef7;box-shadow:0 3px 15px #34402a18}
+.turn-front{transform:rotateY(0deg) translateZ(.2px)}.turn-back{transform:rotateY(180deg) translateZ(.2px)}
+.turn-face>.book-page{height:100%;width:100%;margin:0;min-height:0;border-radius:inherit}.turn-face>.left{display:flex;flex-direction:column;justify-content:center}
+.turn-forward .turn-front,.turn-backward .turn-back{border-radius:0 16px 16px 0}.turn-forward .turn-back,.turn-backward .turn-front{border-radius:8px 0 0 8px}
+.turn-shade{position:absolute;inset:0;opacity:0;background:linear-gradient(90deg,#263b25,transparent 75%);pointer-events:none}
+.book-turning .book-page{user-select:none}.book-turning{cursor:progress}.chapter-step.active{transform:none}.chapter-step:disabled{opacity:1;cursor:wait}.guide-controls .button:disabled{opacity:.6}
+@media(max-width:650px){.journey-book{grid-template-columns:1fr;perspective:1400px}.journey-book:before{left:0;width:10px}.journey-book>.book-page{min-height:0}.journey-book>.left{min-height:190px}.book-turning{overflow:hidden}.mobile-sheet{width:100%;left:0;transform-origin:left center}.mobile-sheet .turn-face{display:flex;flex-direction:column;border-radius:8px}.mobile-sheet .turn-face>.book-page{height:auto;min-height:0}.mobile-sheet .turn-face>.left{display:block;min-height:190px}.mobile-sheet .turn-face>.right{flex:1}.book-turn-sheet .chapter-number{float:right}}
+.mobile-sheet.turn-backward{transform-origin:right center}
+
+.orbit-scene .orb::before{animation:glass-current 9s ease-in-out infinite alternate}
+.orbit-satellite{animation:orbit-depth 24s var(--orbit-delay) steps(1,end) infinite}
+.orbit-scene .orbit-satellite > :is(.floating-word,.orbit-chip){
+  animation:orbit-revolve 24s var(--orbit-delay) linear infinite;
+}
+@keyframes glass-current{
+  to{transform:rotate(35deg) scale(1.08);opacity:.48}
+}
+@keyframes orbit-revolve{
+  from{offset-distance:0%}
+  to{offset-distance:100%}
+}
+@keyframes orbit-depth{
+  0%{z-index:2}
+  50%{z-index:0}
+}
+
+.cover-transition{
+  position:fixed;
+  z-index:50;
+  perspective:1700px;
+  pointer-events:none;
+}
+.cover-transition-pages.journey-book{
+  position:absolute;
+  inset:0;
+  max-width:none;
+  margin:0;
+  perspective:none;
+}
+.cover-position{
+  position:absolute;
+  top:0;
+  height:100%;
+  z-index:3;
+  transform-style:preserve-3d;
+}
+.cover-hinge{
+  position:absolute;
+  inset:0;
+  transform-origin:left center;
+  transform-style:preserve-3d;
+}
+.cover-hinge .cover-front,.cover-inside{
+  position:absolute;
+  inset:0;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+.cover-hinge .cover-front{
+  width:100%;
+  height:100%;
+  margin:0;
+  transform:none;
+  padding:clamp(18px,5vh,40px) 18px;
+  box-shadow:5px 6px 0 #d9dfc5,9px 12px 28px #1e352b3a;
+}
+.cover-inside{
+  display:flex;
+  flex-direction:column;
+  border-radius:8px 1px 1px 8px;
+  overflow:hidden;
+  transform:rotateY(180deg);
+}
+.cover-inside>.book-page{flex:1}
+.cover-transition-target{visibility:hidden}
+@media(max-width:650px){
+  .cover-inside{display:none}
+  .cover-hinge .cover-front{justify-content:center;gap:20px}
+}
