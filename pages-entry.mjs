@@ -4,4 +4,4 @@ import {browserSocialAuth} from './social-auth.mjs?v=2';
 window.studySocial=browserSocialAuth();
 window.studyAI=browserTutor();
 window.studyLocal=browserLocalAPI(()=>window.studySocial?.identity());
-await import('./app.js?v=17');
+await import('./app.js?v=18');
