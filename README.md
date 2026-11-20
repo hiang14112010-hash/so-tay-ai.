@@ -1,6 +1,6 @@
 # Sổ tay AI — GitHub Pages
 
-Website học từ vựng tiếng Anh lớp 11, có intro, sách hướng dẫn theo chặng, ghép prompt, bài tập, flashcard, ôn tập và dịch thuật.
+Website học từ vựng tiếng Anh dành cho mọi lứa tuổi, có intro, sách hướng dẫn theo chặng, ghép prompt, bài tập, flashcard, ôn tập và dịch thuật.
 
 ## Dữ liệu
 

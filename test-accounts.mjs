@@ -1,4 +1,4 @@
-import {exercises,vocabulary} from './learning-data.mjs';
+import {exercises,vocabulary} from './learning-data.mjs?v=2';
 
 export const testPassword='SoTay-KiemThu11';
 export const testNames=[

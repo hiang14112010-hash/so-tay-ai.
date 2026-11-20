@@ -1,5 +1,5 @@
-import {vocabulary,exercises} from './learning-data.mjs';
-import {addTestProgress,sampleRanking,testNames,testPassword} from './test-accounts.mjs?v=2';
+import {vocabulary,exercises} from './learning-data.mjs?v=2';
+import {addTestProgress,sampleRanking,testNames,testPassword} from './test-accounts.mjs?v=3';
 
 const fresh=()=>({users:[],cards:[],reviews:[],awards:[],attempts:[],conversations:[]});
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});

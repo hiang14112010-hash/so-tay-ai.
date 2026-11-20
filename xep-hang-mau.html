@@ -65,7 +65,7 @@
     <noscript><p>Vui lòng bật JavaScript để xem bảng xếp hạng và biểu đồ tiến độ.</p></noscript>
   </main>
   <script type="module">
-    import {sampleRanking as profiles} from './test-accounts.mjs?v=2';
+    import {sampleRanking as profiles} from './test-accounts.mjs?v=3';
     const maxCorrect=Math.max(...profiles.flatMap(profile=>profile.week));
     const rows=document.getElementById('sample-rows');
     const select=document.getElementById('sample-profile');
